@@ -13,10 +13,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100dvh;
+  overflow: hidden;
 }
 
 button {
-  min-height: 48px;
+  min-height: 46px;
   border: 1px solid #64748b;
   border-radius: 12px;
   background: #1e293b;
@@ -38,117 +39,147 @@ button:disabled {
 
 .app-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-height: 100dvh;
-  background: radial-gradient(circle at 50% 20%, #1e3a5f, #0b1020 62%);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+  background: #0b1020;
 }
 
 .app-header {
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: max(16px, env(safe-area-inset-top)) 20px 16px;
+  gap: 12px;
+  min-height: 54px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   border-bottom: 1px solid #334155;
+  background: #111827;
 }
 
 .eyebrow,
-.status,
-.field-placeholder p {
+.status {
   margin: 0;
 }
 
 .eyebrow {
   color: #bfdbfe;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
 }
 
 h1 {
-  margin: 2px 0 0;
-  font-size: 1.375rem;
+  margin: 0;
+  font-size: 1.125rem;
 }
 
 .status {
-  padding: 6px 10px;
+  padding: 5px 9px;
   border: 1px solid #60a5fa;
   border-radius: 999px;
   color: #dbeafe;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+}
+
+.experiment,
+.field-container,
+.wave-canvas-viewport {
+  min-width: 0;
+  min-height: 0;
 }
 
 .experiment {
   display: grid;
   place-items: center;
-  min-height: 0;
-  padding: 20px;
+  overflow: hidden;
 }
 
 .field-container {
+  position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  gap: 8px;
-  width: min(100%, 960px);
-  max-height: 100%;
-  aspect-ratio: 1;
-  padding: 16px;
-  border: 2px solid #60a5fa;
-  border-radius: 24px;
-  background: rgb(15 23 42 / 72%);
-  text-align: center;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  background: #f7f7f7;
 }
 
-.field-container > p:first-child {
+.field-title {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 50%;
+  margin: 0;
+  padding: 7px 12px;
+  transform: translateX(-50%);
+  border: 1px solid rgb(96 165 250 / 75%);
+  border-radius: 999px;
+  background: rgb(15 23 42 / 82%);
   color: #fef08a;
-  font-size: clamp(1.125rem, 4vw, 1.5rem);
-  font-weight: 800;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .wave-canvas-viewport {
   display: grid;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
   place-items: center;
   overflow: hidden;
 }
 
 .wave-canvas {
   width: auto;
-  min-height: 0;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  border-radius: 14px;
   background: #f7f7f7;
   image-rendering: auto;
   touch-action: manipulation;
 }
 
-.field-hint {
-  color: #cbd5e1;
-  font-size: 0.875rem;
-}
-
 .color-legend {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 76px;
+  left: 12px;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(60px, 220px) auto;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  color: #e2e8f0;
-  font-size: 0.75rem;
+  gap: 7px;
+  color: #0f172a;
+  font-size: 0.7rem;
+  pointer-events: none;
 }
 
 .legend-gradient {
-  min-height: 10px;
+  min-height: 9px;
+  border: 1px solid #475569;
   border-radius: 999px;
   background: linear-gradient(90deg, #478cff, #f7f7f7 50%, #f78249);
 }
 
 .control-panel {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 10px max(8px, env(safe-area-inset-bottom));
   border-top: 1px solid #334155;
-  background: #111827;
+  background: rgb(17 24 39 / 94%);
+  scrollbar-width: none;
+}
+
+.control-panel button {
+  flex: 0 0 auto;
+  min-width: 104px;
+  padding: 0 12px;
 }
 
 .primary-control {
@@ -157,8 +188,101 @@ h1 {
   color: #1c1917;
 }
 
+.active-control {
+  border-color: #38bdf8;
+  background: #075985;
+}
+
+.observation-panel {
+  position: fixed;
+  z-index: 9;
+  right: 8px;
+  bottom: 68px;
+  left: 8px;
+  max-height: 48dvh;
+  overflow: hidden;
+  border: 1px solid #475569;
+  border-radius: 16px 16px 0 0;
+  background: rgb(15 23 42 / 96%);
+  transform: translateY(calc(100% - 48px));
+  transition: transform 180ms ease-out;
+}
+
+.observation-panel.open {
+  transform: translateY(0);
+}
+
+.observation-handle {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: #1e293b;
+}
+
+.observation-empty,
+.measurement-note {
+  margin: 0;
+  padding: 10px 16px;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+}
+
+.observation-content {
+  padding: 10px 14px 14px;
+}
+
+.observation-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.observation-values p {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: #1e293b;
+}
+
+.observation-values span {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+}
+
+.waveform-graph {
+  width: 100%;
+  height: 112px;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.waveform-zero {
+  stroke: #64748b;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.waveform-line {
+  fill: none;
+  stroke: #ea580c;
+  stroke-width: 2.5;
+}
+
+.measurement-note {
+  padding: 4px 0 0;
+}
+
 .error-message {
   position: fixed;
+  z-index: 20;
   right: 16px;
   bottom: 84px;
   left: 16px;
@@ -172,12 +296,29 @@ h1 {
 
 @media (orientation: landscape) and (max-height: 560px) {
   .app-header {
-    padding-top: 10px;
-    padding-bottom: 10px;
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    min-height: 44px;
+    border: 1px solid #334155;
+    border-radius: 12px;
   }
 
-  .field-container {
-    width: min(100%, 960px);
-    aspect-ratio: 16 / 9;
+  .app-shell {
+    display: block;
+  }
+
+  .experiment {
+    width: 100vw;
+    height: 100dvh;
+  }
+
+  .observation-panel {
+    top: 8px;
+    right: 8px;
+    bottom: 68px;
+    left: auto;
+    width: min(360px, 42vw);
+    max-height: none;
   }
 }

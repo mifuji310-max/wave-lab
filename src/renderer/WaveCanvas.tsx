@@ -4,10 +4,12 @@ import type { SimulationFrame } from "../simulation/SimulationController";
 interface WaveCanvasProps {
   frame: SimulationFrame | undefined;
   displayMode: "color" | "monochrome";
-  onPulse: (column: number, row: number) => void;
+  observer: { column: number; row: number } | undefined;
+  interactionMode: "pulse" | "observer";
+  onFieldTap: (column: number, row: number) => void;
 }
 
-export function WaveCanvas({ frame, displayMode, onPulse }: WaveCanvasProps) {
+export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFieldTap }: WaveCanvasProps) {
   const canvasReference = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -40,7 +42,17 @@ export function WaveCanvas({ frame, displayMode, onPulse }: WaveCanvasProps) {
     }
 
     context.putImageData(image, 0, 0);
-  }, [frame]);
+
+    if (observer !== undefined) {
+      context.beginPath();
+      context.arc(observer.column + 0.5, observer.row + 0.5, 4, 0, Math.PI * 2);
+      context.fillStyle = "#facc15";
+      context.fill();
+      context.lineWidth = 1.5;
+      context.strokeStyle = "#0f172a";
+      context.stroke();
+    }
+  }, [displayMode, frame, observer]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (frame === undefined) {
@@ -57,7 +69,7 @@ export function WaveCanvas({ frame, displayMode, onPulse }: WaveCanvasProps) {
       Math.min(frame.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * frame.rows)),
     );
 
-    onPulse(column, row);
+    onFieldTap(column, row);
   };
 
   return (
@@ -67,7 +79,11 @@ export function WaveCanvas({ frame, displayMode, onPulse }: WaveCanvasProps) {
         className="wave-canvas"
         style={{ aspectRatio: frame === undefined ? "4 / 5" : `${frame.columns} / ${frame.rows}` }}
         onPointerDown={handlePointerDown}
-        aria-label="波の実験フィールド。タップして波を起こします。"
+        aria-label={
+          interactionMode === "pulse"
+            ? "波の実験フィールド。タップして波を起こします。"
+            : "波の実験フィールド。タップして観測点を置きます。"
+        }
       />
     </div>
   );

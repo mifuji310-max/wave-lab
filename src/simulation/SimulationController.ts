@@ -16,6 +16,14 @@ export interface SimulationControllerCallbacks {
   onReady: () => void;
   onFrame: (frame: SimulationFrame) => void;
   onError: (message: string) => void;
+  onObservationSample: (sample: ObservationSample) => void;
+}
+
+export interface ObservationSample {
+  column: number;
+  row: number;
+  simulationTimeSeconds: number;
+  displacement: number;
 }
 
 export class SimulationController {
@@ -51,6 +59,10 @@ export class SimulationController {
 
   public setContinuousSource(enabled: boolean): void {
     this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCE", enabled });
+  }
+
+  public setObserver(column: number, row: number): void {
+    this.send({ version: workerProtocolVersion, type: "SET_OBSERVER", column, row });
   }
 
   public injectPulse(column: number, row: number, amplitude: number): void {
@@ -93,6 +105,14 @@ export class SimulationController {
       case "WARNING":
       case "ERROR":
         this.callbacks.onError(event.message);
+        return;
+      case "OBSERVATION_SAMPLE":
+        this.callbacks.onObservationSample({
+          column: event.column,
+          row: event.row,
+          simulationTimeSeconds: event.simulationTimeSeconds,
+          displacement: event.displacement,
+        });
         return;
     }
   };

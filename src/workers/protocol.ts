@@ -9,6 +9,7 @@ export type WorkerCommand =
   | { version: typeof workerProtocolVersion; type: "STEP" }
   | { version: typeof workerProtocolVersion; type: "RESET" }
   | { version: typeof workerProtocolVersion; type: "SET_CONTINUOUS_SOURCE"; enabled: boolean }
+  | { version: typeof workerProtocolVersion; type: "SET_OBSERVER"; column: number; row: number }
   | {
       version: typeof workerProtocolVersion;
       type: "INJECT_PULSE";
@@ -29,4 +30,12 @@ export type WorkerEvent =
       fieldBuffer: ArrayBuffer;
     }
   | { version: typeof workerProtocolVersion; type: "WARNING"; message: string }
+  | {
+      version: typeof workerProtocolVersion;
+      type: "OBSERVATION_SAMPLE";
+      column: number;
+      row: number;
+      simulationTimeSeconds: number;
+      displacement: number;
+    }
   | { version: typeof workerProtocolVersion; type: "ERROR"; message: string };

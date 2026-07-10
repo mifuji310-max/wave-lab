@@ -14,6 +14,8 @@ let config: SolverConfig | undefined;
 let state: SolverState | undefined;
 let timerId: number | undefined;
 let continuousSourceEnabled = false;
+let observer: { column: number; row: number } | undefined;
+let simulationStepCount = 0;
 
 self.onmessage = (message: MessageEvent<WorkerCommand>) => {
   try {
@@ -43,6 +45,8 @@ function handleCommand(command: WorkerCommand): void {
       config = command.config;
       state = createSolverState(config);
       continuousSourceEnabled = false;
+      observer = undefined;
+      simulationStepCount = 0;
       emit({ version: workerProtocolVersion, type: "READY" });
       emitFrame();
       return;
@@ -59,10 +63,18 @@ function handleCommand(command: WorkerCommand): void {
       return;
     case "RESET":
       resetSolverState(requireState());
+      simulationStepCount = 0;
       emitFrame();
       return;
     case "SET_CONTINUOUS_SOURCE":
       continuousSourceEnabled = command.enabled;
+      return;
+    case "SET_OBSERVER":
+      observer = {
+        column: Math.max(1, Math.min(requireConfig().columns - 2, command.column)),
+        row: Math.max(1, Math.min(requireConfig().rows - 2, command.row)),
+      };
+      emitObservationSample();
       return;
     case "INJECT_PULSE":
       injectBipolarPulse(requireState(), requireConfig(), command.column, command.row, command.amplitude);
@@ -107,7 +119,31 @@ function stepAndEmit(): void {
   }
 
   stepSolver(currentState, currentConfig);
+  simulationStepCount += 1;
   emitFrame();
+
+  if (simulationStepCount % 3 === 0) {
+    emitObservationSample();
+  }
+}
+
+function emitObservationSample(): void {
+  if (observer === undefined) {
+    return;
+  }
+
+  const currentState = requireState();
+  const currentConfig = requireConfig();
+  const index = observer.row * currentConfig.columns + observer.column;
+
+  emit({
+    version: workerProtocolVersion,
+    type: "OBSERVATION_SAMPLE",
+    column: observer.column,
+    row: observer.row,
+    simulationTimeSeconds: currentState.simulationTimeSeconds,
+    displacement: currentState.current[index],
+  });
 }
 
 function emitFrame(): void {

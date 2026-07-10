@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { ObservationPanel } from "../observation/ObservationPanel";
 import type { SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
 import {
   SimulationController,
+  type ObservationSample,
   type SimulationFrame,
 } from "../simulation/SimulationController";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
+type InteractionMode = "pulse" | "observer";
 
 const statusLabels: Record<SimulationStatus, string> = {
   loading: "計算を準備中",
@@ -16,16 +19,7 @@ const statusLabels: Record<SimulationStatus, string> = {
   error: "計算エラー",
 };
 
-const prototypeConfig: SolverConfig = {
-  columns: 192,
-  rows: 192,
-  waveSpeedCellsPerSecond: 1,
-  cellSize: 1,
-  timeStepSeconds: 0.5,
-  dampingPerSecond: 0.02,
-  absorptionLayerCells: 20,
-  absorptionMaxDampingPerSecond: 1.2,
-};
+const prototypeConfig = createPrototypeConfig();
 
 export function App() {
   const controllerReference = useRef<SimulationController | null>(null);
@@ -34,11 +28,18 @@ export function App() {
   const [errorMessage, setErrorMessage] = useState<string>();
   const [continuousSourceEnabled, setContinuousSourceEnabled] = useState(false);
   const [displayMode, setDisplayMode] = useState<"color" | "monochrome">("color");
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>("pulse");
+  const [observer, setObserver] = useState<{ column: number; row: number }>();
+  const [observationSamples, setObservationSamples] = useState<ObservationSample[]>([]);
+  const [observationPanelOpen, setObservationPanelOpen] = useState(false);
 
   useEffect(() => {
     const controller = new SimulationController(prototypeConfig, {
       onReady: () => setSimulationStatus("ready"),
       onFrame: setFrame,
+      onObservationSample: (sample) => {
+        setObservationSamples((samples) => [...samples.slice(-179), sample]);
+      },
       onError: (message) => {
         setErrorMessage(message);
         setSimulationStatus("error");
@@ -65,6 +66,7 @@ export function App() {
 
   const handleReset = () => {
     controllerReference.current?.reset();
+    setObservationSamples([]);
     setSimulationStatus("ready");
   };
 
@@ -84,7 +86,15 @@ export function App() {
     }
   };
 
-  const handlePulse = (column: number, row: number) => {
+  const handleFieldTap = (column: number, row: number) => {
+    if (interactionMode === "observer") {
+      controllerReference.current?.setObserver(column, row);
+      setObserver({ column, row });
+      setObservationSamples([]);
+      setObservationPanelOpen(true);
+      return;
+    }
+
     controllerReference.current?.injectPulse(column, row, 1.4);
 
     if (simulationStatus !== "running") {
@@ -110,9 +120,16 @@ export function App() {
 
       <section className="experiment" aria-labelledby="experiment-title">
         <div className="field-container">
-          <p id="experiment-title">波を起こしてみよう</p>
-          <WaveCanvas frame={frame} displayMode={displayMode} onPulse={handlePulse} />
-          <p className="field-hint">フィールドをタップすると、波が広がります</p>
+          <h2 id="experiment-title" className="field-title">
+            {interactionMode === "pulse" ? "タップして波を起こす" : "タップして観測点を置く"}
+          </h2>
+          <WaveCanvas
+            frame={frame}
+            displayMode={displayMode}
+            observer={observer}
+            interactionMode={interactionMode}
+            onFieldTap={handleFieldTap}
+          />
           <div className="color-legend" aria-label="波の高さの色の説明">
             <span>低い</span>
             <span className="legend-gradient" aria-hidden="true" />
@@ -121,7 +138,28 @@ export function App() {
         </div>
       </section>
 
+      <ObservationPanel
+        open={observationPanelOpen}
+        observer={observer}
+        samples={observationSamples}
+        onToggle={() => setObservationPanelOpen((open) => !open)}
+      />
+
       <section className="control-panel" aria-label="シミュレーション操作">
+        <button
+          type="button"
+          className={interactionMode === "pulse" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("pulse")}
+        >
+          波を起こす
+        </button>
+        <button
+          type="button"
+          className={interactionMode === "observer" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("observer")}
+        >
+          観測点
+        </button>
         <button type="button" className="primary-control" onClick={handlePlayPause} disabled={controlsDisabled}>
           {isRunning ? "一時停止" : "再生"}
         </button>
@@ -141,4 +179,25 @@ export function App() {
       {errorMessage === undefined ? null : <p className="error-message">{errorMessage}</p>}
     </main>
   );
+}
+
+function createPrototypeConfig(): SolverConfig {
+  const availableWidth = window.innerWidth;
+  const availableHeight = Math.max(320, window.innerHeight - 56);
+  const fieldAspectRatio = Math.max(0.55, Math.min(1.8, availableWidth / availableHeight));
+  const targetCellCount = 192 * 192;
+  const columns = Math.round(Math.sqrt(targetCellCount * fieldAspectRatio));
+  const rows = Math.round(targetCellCount / columns);
+  const minimumDimension = Math.min(columns, rows);
+
+  return {
+    columns,
+    rows,
+    waveSpeedCellsPerSecond: 1,
+    cellSize: 1,
+    timeStepSeconds: 0.5,
+    dampingPerSecond: 0.02,
+    absorptionLayerCells: Math.max(16, Math.round(minimumDimension * 0.1)),
+    absorptionMaxDampingPerSecond: 1.2,
+  };
 }
