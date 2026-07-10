@@ -5,7 +5,7 @@
 Wave Lab is a mobile-first educational wave simulator for middle-school learners.  
 It aims to make reflection, diffraction, interference, phase, wavelength, and amplitude understandable through direct experimentation.
 
-> Current status: planning and design. Application code has not yet been implemented.
+> Current status: interactive Phase 1 browser prototype under active validation.
 
 ## Product direction
 
@@ -59,14 +59,16 @@ Run `pnpm typecheck` for TypeScript validation, `pnpm test` for unit tests, and 
 
 ## Development status
 
-The next milestone is a minimal physics prototype containing:
+The current prototype includes:
 
-1. One pulse source
-2. A two-dimensional scalar wave field
-3. A 2D color renderer
-4. A pause control
-5. One observation point
-6. Basic performance measurements on Android
+1. Worker-based two-dimensional scalar FDTD simulation
+2. Tap pulses and multiple positioned continuous sources
+3. Color and monochrome Canvas 2D rendering
+4. Playback, step, reset, speed, and performance controls
+5. One observation point with a fixed-scale history graph
+6. Editable fixed walls and a single-slit experiment tool
+
+The next validation milestone is Android performance and device rotation testing.
 
 ## Repository policy
 

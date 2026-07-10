@@ -10,11 +10,13 @@ import {
   type SolverState,
 } from "../physics/solver";
 import { workerProtocolVersion, type WorkerCommand, type WorkerEvent } from "./protocol";
+import type { ContinuousSourceConfig } from "../simulation/types";
 
 let config: SolverConfig | undefined;
 let state: SolverState | undefined;
 let timerId: number | undefined;
 let continuousSourceEnabled = false;
+let continuousSources: ContinuousSourceConfig[] = [];
 let observer: { column: number; row: number } | undefined;
 let simulationStepCount = 0;
 let playbackSpeed: 0.25 | 0.5 | 1 | 2 = 1;
@@ -49,6 +51,7 @@ function handleCommand(command: WorkerCommand): void {
       config = command.config;
       state = createSolverState(config);
       continuousSourceEnabled = false;
+      continuousSources = [];
       observer = undefined;
       simulationStepCount = 0;
       playbackSpeed = 1;
@@ -69,11 +72,18 @@ function handleCommand(command: WorkerCommand): void {
       return;
     case "RESET":
       resetSolverState(requireState());
+      setFixedBoundaryCells(requireState(), requireConfig(), []);
+      continuousSourceEnabled = false;
+      continuousSources = [];
+      observer = undefined;
       simulationStepCount = 0;
       emitFrame();
       return;
     case "SET_CONTINUOUS_SOURCE":
       continuousSourceEnabled = command.enabled;
+      return;
+    case "SET_CONTINUOUS_SOURCES":
+      continuousSources = command.sources.map((source) => ({ ...source }));
       return;
     case "SET_SPEED":
       playbackSpeed = command.multiplier;
@@ -126,17 +136,20 @@ function stepAndEmit(): void {
   const currentConfig = requireConfig();
 
   if (continuousSourceEnabled) {
-    // With c = 1 cell/s, this angular frequency produces a wavelength of
-    // approximately 24 cells, which is long enough to resolve clearly.
-    const sourceAngularFrequency = (2 * Math.PI) / 24;
-    const sourceAmplitude = Math.sin(currentState.simulationTimeSeconds * sourceAngularFrequency) * 0.12;
-    injectBipolarPulse(
-      currentState,
-      currentConfig,
-      Math.floor(currentConfig.columns / 2),
-      Math.floor(currentConfig.rows / 2),
-      sourceAmplitude,
-    );
+    for (const source of continuousSources) {
+      // In normalized units c = 1 cell/s, so angular frequency is 2π/λ.
+      const sourceAngularFrequency = (2 * Math.PI) / source.wavelengthCells;
+      const sourceAmplitude =
+        Math.sin(currentState.simulationTimeSeconds * sourceAngularFrequency + source.phaseRadians) *
+        source.amplitude;
+      injectBipolarPulse(
+        currentState,
+        currentConfig,
+        source.column,
+        source.row,
+        sourceAmplitude,
+      );
+    }
   }
 
   stepSolver(currentState, currentConfig);

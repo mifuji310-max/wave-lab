@@ -35,7 +35,7 @@ export function ObservationPanel({ open, observer, samples, onToggle }: Observat
             <line x1="0" y1="48" x2="320" y2="48" className="waveform-zero" />
             <polyline points={waveformPoints} className="waveform-line" />
           </svg>
-          <p className="measurement-note">実線は観測点で測った値です</p>
+          <p className="measurement-note">実線は観測値です（縦軸固定: -1.5 ～ +1.5）</p>
         </div>
       )}
     </aside>
@@ -47,12 +47,16 @@ function createWaveformPoints(samples: ObservationSample[]): string {
     return "";
   }
 
-  const maximumMagnitude = Math.max(0.1, ...samples.map((sample) => Math.abs(sample.displacement)));
+  const fixedAmplitudeScale = 1.5;
 
   return samples
     .map((sample, index) => {
       const x = samples.length === 1 ? 0 : (index / (samples.length - 1)) * 320;
-      const y = 48 - (sample.displacement / maximumMagnitude) * 42;
+      const normalizedDisplacement = Math.max(
+        -1,
+        Math.min(1, sample.displacement / fixedAmplitudeScale),
+      );
+      const y = 48 - normalizedDisplacement * 42;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");

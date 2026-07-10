@@ -1,4 +1,5 @@
 import type { BoundaryCell, SolverConfig } from "../physics/solver";
+import type { ContinuousSourceConfig } from "./types";
 import {
   workerProtocolVersion,
   type WorkerCommand,
@@ -65,6 +66,10 @@ export class SimulationController {
 
   public setContinuousSource(enabled: boolean): void {
     this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCE", enabled });
+  }
+
+  public setContinuousSources(sources: ContinuousSourceConfig[]): void {
+    this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCES", sources });
   }
 
   public setSpeed(multiplier: 0.25 | 0.5 | 1 | 2): void {
