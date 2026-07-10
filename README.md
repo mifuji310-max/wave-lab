@@ -42,7 +42,7 @@ pnpm install
 pnpm dev
 ```
 
-Run `pnpm typecheck` for TypeScript validation and `pnpm build` for a production build.
+Run `pnpm typecheck` for TypeScript validation, `pnpm test` for unit tests, and `pnpm build` for a production build.
 
 ## Documentation
 

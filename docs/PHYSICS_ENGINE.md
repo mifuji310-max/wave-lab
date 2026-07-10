@@ -33,6 +33,22 @@ Initial candidate:
 
 The exact update equation must be recorded next to the implementation and covered by unit tests.
 
+### Prototype update equation
+
+The initial Worker prototype uses the following explicit update, where
+`r = c Δt / Δx` and `L(u)` is the five-point discrete Laplacian:
+
+\[
+u^{n+1} = (2 - \gamma\Delta t)u^n - (1 - \gamma\Delta t)u^{n-1}
++ r^2 L(u^n) + \Delta t^2 S^n
+\]
+
+The implementation calculates `r` and rejects configurations outside the
+two-dimensional stability limit before allocating solver arrays. The prototype
+uses a fixed zero-value outer edge only to test the update and Worker protocol.
+It is not the required absorbing outer boundary for v0.1 and must not be used
+for lesson validation until that boundary is implemented and documented.
+
 ## 3. Stability
 
 The time step must satisfy the stability requirement for the selected scheme. For the conventional two-dimensional second-order stencil:
