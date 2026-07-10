@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ObservationPanel } from "../observation/ObservationPanel";
+import { createSingleSlitBoundaryCells } from "../physics/boundaries";
 import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
 import { appVersion } from "../shared/version";
@@ -11,7 +12,7 @@ import {
 } from "../simulation/SimulationController";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
-type InteractionMode = "pulse" | "observer" | "wall" | "erase";
+type InteractionMode = "pulse" | "observer" | "wall" | "slit" | "erase";
 
 const statusLabels: Record<SimulationStatus, string> = {
   loading: "計算を準備中",
@@ -104,6 +105,18 @@ export function App() {
 
     if (interactionMode === "wall" || interactionMode === "erase") {
       updateBoundaries([{ column, row }], interactionMode === "erase");
+      return;
+    }
+
+    if (interactionMode === "slit") {
+      if (frame === undefined) {
+        return;
+      }
+
+      updateBoundaries(
+        createSingleSlitBoundaryCells(frame.columns, frame.rows, column, row),
+        false,
+      );
       return;
     }
 
@@ -234,6 +247,13 @@ export function App() {
         </button>
         <button
           type="button"
+          className={interactionMode === "slit" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("slit")}
+        >
+          単スリット
+        </button>
+        <button
+          type="button"
           className={interactionMode === "erase" ? "mode-control active-control" : "mode-control"}
           onClick={() => setInteractionMode("erase")}
         >
@@ -302,6 +322,8 @@ function fieldTitleForMode(mode: InteractionMode): string {
       return "タップして観測点を置く";
     case "wall":
       return "ドラッグして壁を描く";
+    case "slit":
+      return "タップして単スリットを置く";
     case "erase":
       return "ドラッグして壁を消す";
   }

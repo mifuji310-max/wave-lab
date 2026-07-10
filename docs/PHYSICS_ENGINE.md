@@ -112,6 +112,10 @@ idealization produces a sign-inverting reflection and is kept separate from the
 outer absorbing sponge. The UI must describe it as an idealized fixed wall,
 not a generic material surface.
 
+The single-slit tool creates the same fixed-value barrier with a deliberately
+open group of cells at its center. Diffraction must arise from the solver at
+that opening; the renderer may not add a diffraction effect.
+
 ## 6. Observation
 
 The observer samples \(u\) at a physical coordinate using a documented interpolation method.

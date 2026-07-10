@@ -7,7 +7,7 @@ interface WaveCanvasProps {
   displayMode: "color" | "monochrome";
   observer: { column: number; row: number } | undefined;
   boundaryCells: BoundaryCell[];
-  interactionMode: "pulse" | "observer" | "wall" | "erase";
+  interactionMode: "pulse" | "observer" | "wall" | "slit" | "erase";
   onFieldTap: (column: number, row: number) => void;
   onFieldDrag: (from: BoundaryCell, to: BoundaryCell) => void;
 }
@@ -132,6 +132,8 @@ export function WaveCanvas({
               ? "波の実験フィールド。タップして観測点を置きます。"
               : interactionMode === "wall"
                 ? "波の実験フィールド。ドラッグして壁を描きます。"
+                : interactionMode === "slit"
+                  ? "波の実験フィールド。タップして単スリットを置きます。"
                 : "波の実験フィールド。ドラッグして壁を消します。"
         }
       />
