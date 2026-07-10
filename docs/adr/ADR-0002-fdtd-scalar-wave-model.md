@@ -29,4 +29,4 @@ Limitations:
 
 ## Validation required
 
-The model must pass the validation suite in `PHYSICS_ENGINE.md` before it is used in lessons.
+The model must pass the validation suite in [`PHYSICS_ENGINE.md`](../PHYSICS_ENGINE.md) before it is used in lessons.

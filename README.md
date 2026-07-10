@@ -38,8 +38,8 @@ The technology stack is provisional until the first performance prototype is val
 | [Physics Engine](docs/PHYSICS_ENGINE.md) | Numerical model and validation policy |
 | [UI/UX Guidelines](docs/UI_UX_GUIDELINES.md) | Mobile interaction and accessibility |
 | [Lesson Design](docs/LESSON_DESIGN.md) | Educational flow and lesson structure |
-| [Roadmap](docs/ROADMAP.md) | Development phases |
-| [Backlog](docs/BACKLOG.md) | Deferred ideas and future features |
+| [Roadmap](docs/planning/ROADMAP.md) | Development phases |
+| [Backlog](docs/planning/BACKLOG.md) | Deferred ideas and future features |
 
 ## Development status
 
