@@ -28,6 +28,22 @@ It aims to make reflection, diffraction, interference, phase, wavelength, and am
 
 The technology stack is provisional until the first performance prototype is validated.
 
+## Development
+
+The current application shell uses React, TypeScript, Vite, and pnpm.
+
+Requirements:
+
+- Node.js `^20.19.0` or `>=22.12.0`
+- pnpm
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Run `pnpm typecheck` for TypeScript validation and `pnpm build` for a production build.
+
 ## Documentation
 
 | Document | Purpose |
