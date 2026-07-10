@@ -57,12 +57,15 @@ export function WaveCanvas({ frame, onPulse }: WaveCanvasProps) {
   };
 
   return (
-    <canvas
-      ref={canvasReference}
-      className="wave-canvas"
-      onPointerDown={handlePointerDown}
-      aria-label="波の実験フィールド。タップして波を起こします。"
-    />
+    <div className="wave-canvas-viewport">
+      <canvas
+        ref={canvasReference}
+        className="wave-canvas"
+        style={{ aspectRatio: frame === undefined ? "4 / 5" : `${frame.columns} / ${frame.rows}` }}
+        onPointerDown={handlePointerDown}
+        aria-label="波の実験フィールド。タップして波を起こします。"
+      />
+    </div>
   );
 }
 

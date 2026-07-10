@@ -90,6 +90,13 @@ Required for v0.1:
 - Outer absorbing region to reduce artificial edge reflections
 - Open cells forming a slit
 
+The default experiment has no reflecting interior wall. Its outer edge uses an
+absorbing sponge region: damping increases gradually toward the edge so that a
+wave is reduced before reaching the fixed outermost cells. This is an
+educational and performance-oriented approximation, not a perfectly
+non-reflecting boundary. The implementation must measure and document the
+remaining reflection before lessons rely on it.
+
 The exact physical interpretation of a “wall” must be documented. Fixed-value and zero-normal-gradient boundaries represent different idealizations and must not be mixed without explanation.
 
 ## 6. Observation

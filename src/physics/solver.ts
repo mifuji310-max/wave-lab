@@ -5,6 +5,8 @@ export interface SolverConfig {
   cellSize: number;
   timeStepSeconds: number;
   dampingPerSecond: number;
+  absorptionLayerCells: number;
+  absorptionMaxDampingPerSecond: number;
 }
 
 export interface SolverState {
@@ -36,6 +38,18 @@ export function validateSolverConfig(config: SolverConfig): void {
 
   if (config.dampingPerSecond < 0) {
     throw new Error("Damping cannot be negative.");
+  }
+
+  if (!Number.isInteger(config.absorptionLayerCells) || config.absorptionLayerCells < 1) {
+    throw new Error("The absorption layer must be at least one cell wide.");
+  }
+
+  if (config.absorptionLayerCells * 2 >= Math.min(config.columns, config.rows)) {
+    throw new Error("The absorption layer must leave an interior simulation region.");
+  }
+
+  if (config.absorptionMaxDampingPerSecond < 0) {
+    throw new Error("Absorption damping cannot be negative.");
   }
 
   const courantNumber = calculateCourantNumber(config);
@@ -96,8 +110,6 @@ export function injectGaussianPulse(
 export function stepSolver(state: SolverState, config: SolverConfig): void {
   const courantNumber = calculateCourantNumber(config);
   const courantSquared = courantNumber ** 2;
-  const dampingStep = config.dampingPerSecond * config.timeStepSeconds;
-
   state.next.fill(0);
 
   for (let row = 1; row < config.rows - 1; row += 1) {
@@ -110,8 +122,11 @@ export function stepSolver(state: SolverState, config: SolverConfig): void {
         state.current[toIndex(config, column, row + 1)] -
         4 * state.current[index];
 
-      // This is the documented damped FDTD update. The fixed zero edge is a
-      // temporary prototype boundary, not the absorbing v0.1 boundary.
+      const dampingStep =
+        calculateDampingPerSecond(config, column, row) * config.timeStepSeconds;
+
+      // This is the documented damped FDTD update. The outer sponge raises
+      // damping smoothly, so the fixed zero edge receives little energy.
       state.next[index] =
         (2 - dampingStep) * state.current[index] -
         (1 - dampingStep) * state.previous[index] +
@@ -124,6 +139,23 @@ export function stepSolver(state: SolverState, config: SolverConfig): void {
   state.current = state.next;
   state.next = previous;
   state.simulationTimeSeconds += config.timeStepSeconds;
+}
+
+export function calculateDampingPerSecond(
+  config: SolverConfig,
+  column: number,
+  row: number,
+): number {
+  const distanceToEdge = Math.min(
+    column,
+    row,
+    config.columns - 1 - column,
+    config.rows - 1 - row,
+  );
+  const depthIntoAbsorptionLayer = Math.max(0, config.absorptionLayerCells - distanceToEdge);
+  const normalizedDepth = depthIntoAbsorptionLayer / config.absorptionLayerCells;
+
+  return config.dampingPerSecond + config.absorptionMaxDampingPerSecond * normalizedDepth ** 2;
 }
 
 function toIndex(config: SolverConfig, column: number, row: number): number {

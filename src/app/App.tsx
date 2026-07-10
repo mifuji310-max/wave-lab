@@ -23,6 +23,8 @@ const prototypeConfig: SolverConfig = {
   cellSize: 1,
   timeStepSeconds: 0.5,
   dampingPerSecond: 0.02,
+  absorptionLayerCells: 16,
+  absorptionMaxDampingPerSecond: 1.2,
 };
 
 export function App() {

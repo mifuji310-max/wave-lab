@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateCourantNumber,
+  calculateDampingPerSecond,
   createSolverState,
   injectGaussianPulse,
   stepSolver,
@@ -14,11 +15,19 @@ const stableConfig: SolverConfig = {
   cellSize: 1,
   timeStepSeconds: 0.5,
   dampingPerSecond: 0,
+  absorptionLayerCells: 3,
+  absorptionMaxDampingPerSecond: 1,
 };
 
 describe("solver", () => {
   it("calculates a stable Courant number", () => {
     expect(calculateCourantNumber(stableConfig)).toBe(0.5);
+  });
+
+  it("adds damping only inside the outer absorption layer", () => {
+    expect(calculateDampingPerSecond(stableConfig, 12, 12)).toBe(0);
+    expect(calculateDampingPerSecond(stableConfig, 0, 12)).toBe(1);
+    expect(calculateDampingPerSecond(stableConfig, 2, 12)).toBeCloseTo(1 / 9);
   });
 
   it("rejects a configuration outside the two-dimensional stability margin", () => {
