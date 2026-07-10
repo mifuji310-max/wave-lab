@@ -62,6 +62,13 @@ button:disabled {
   margin: 0;
 }
 
+.performance-label {
+  margin: 0;
+  color: #86efac;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
 .eyebrow {
   color: #bfdbfe;
   font-size: 0.7rem;

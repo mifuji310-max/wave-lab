@@ -17,6 +17,12 @@ export interface SimulationControllerCallbacks {
   onFrame: (frame: SimulationFrame) => void;
   onError: (message: string) => void;
   onObservationSample: (sample: ObservationSample) => void;
+  onPerformance: (measurement: PerformanceMeasurement) => void;
+}
+
+export interface PerformanceMeasurement {
+  simulationStepsPerSecond: number;
+  gridCellCount: number;
 }
 
 export interface ObservationSample {
@@ -59,6 +65,10 @@ export class SimulationController {
 
   public setContinuousSource(enabled: boolean): void {
     this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCE", enabled });
+  }
+
+  public setSpeed(multiplier: 0.25 | 0.5 | 1 | 2): void {
+    this.send({ version: workerProtocolVersion, type: "SET_SPEED", multiplier });
   }
 
   public setObserver(column: number, row: number): void {
@@ -105,6 +115,12 @@ export class SimulationController {
       case "WARNING":
       case "ERROR":
         this.callbacks.onError(event.message);
+        return;
+      case "PERFORMANCE":
+        this.callbacks.onPerformance({
+          simulationStepsPerSecond: event.simulationStepsPerSecond,
+          gridCellCount: event.gridCellCount,
+        });
         return;
       case "OBSERVATION_SAMPLE":
         this.callbacks.onObservationSample({

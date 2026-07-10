@@ -6,6 +6,7 @@ import { appVersion } from "../shared/version";
 import {
   SimulationController,
   type ObservationSample,
+  type PerformanceMeasurement,
   type SimulationFrame,
 } from "../simulation/SimulationController";
 
@@ -33,6 +34,8 @@ export function App() {
   const [observer, setObserver] = useState<{ column: number; row: number }>();
   const [observationSamples, setObservationSamples] = useState<ObservationSample[]>([]);
   const [observationPanelOpen, setObservationPanelOpen] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<0.25 | 0.5 | 1 | 2>(1);
+  const [performanceMeasurement, setPerformanceMeasurement] = useState<PerformanceMeasurement>();
 
   useEffect(() => {
     const controller = new SimulationController(prototypeConfig, {
@@ -41,6 +44,7 @@ export function App() {
       onObservationSample: (sample) => {
         setObservationSamples((samples) => [...samples.slice(-179), sample]);
       },
+      onPerformance: setPerformanceMeasurement,
       onError: (message) => {
         setErrorMessage(message);
         setSimulationStatus("error");
@@ -104,6 +108,14 @@ export function App() {
     }
   };
 
+  const handleSpeed = () => {
+    const speeds: Array<0.25 | 0.5 | 1 | 2> = [0.25, 0.5, 1, 2];
+    const currentIndex = speeds.indexOf(playbackSpeed);
+    const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
+    controllerReference.current?.setSpeed(nextSpeed);
+    setPlaybackSpeed(nextSpeed);
+  };
+
   const isRunning = simulationStatus === "running";
   const controlsDisabled = simulationStatus === "loading" || simulationStatus === "error";
 
@@ -120,6 +132,11 @@ export function App() {
         <p className="status" aria-live="polite">
           {statusLabels[simulationStatus]}
         </p>
+        {performanceMeasurement === undefined ? null : (
+          <p className="performance-label">
+            {Math.round(performanceMeasurement.simulationStepsPerSecond)} step/s
+          </p>
+        )}
       </header>
 
       <section className="experiment" aria-labelledby="experiment-title">
@@ -175,6 +192,9 @@ export function App() {
         </button>
         <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
           連続波: {continuousSourceEnabled ? "ON" : "OFF"}
+        </button>
+        <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
+          速度: {playbackSpeed}×
         </button>
         <button type="button" onClick={() => setDisplayMode((mode) => (mode === "color" ? "monochrome" : "color"))}>
           {displayMode === "color" ? "白黒表示" : "色表示"}

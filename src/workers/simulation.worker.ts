@@ -16,6 +16,9 @@ let timerId: number | undefined;
 let continuousSourceEnabled = false;
 let observer: { column: number; row: number } | undefined;
 let simulationStepCount = 0;
+let playbackSpeed: 0.25 | 0.5 | 1 | 2 = 1;
+let performanceWindowStartedAt = performance.now();
+let performanceWindowStepCount = 0;
 
 self.onmessage = (message: MessageEvent<WorkerCommand>) => {
   try {
@@ -47,6 +50,8 @@ function handleCommand(command: WorkerCommand): void {
       continuousSourceEnabled = false;
       observer = undefined;
       simulationStepCount = 0;
+      playbackSpeed = 1;
+      resetPerformanceWindow();
       emit({ version: workerProtocolVersion, type: "READY" });
       emitFrame();
       return;
@@ -68,6 +73,14 @@ function handleCommand(command: WorkerCommand): void {
       return;
     case "SET_CONTINUOUS_SOURCE":
       continuousSourceEnabled = command.enabled;
+      return;
+    case "SET_SPEED":
+      playbackSpeed = command.multiplier;
+
+      if (timerId !== undefined) {
+        stopLoop();
+        startLoop();
+      }
       return;
     case "SET_OBSERVER":
       observer = {
@@ -93,7 +106,7 @@ function startLoop(): void {
     return;
   }
 
-  timerId = self.setInterval(stepAndEmit, 16);
+  timerId = self.setInterval(stepAndEmit, 16 / playbackSpeed);
 }
 
 function stopLoop(): void {
@@ -123,11 +136,36 @@ function stepAndEmit(): void {
 
   stepSolver(currentState, currentConfig);
   simulationStepCount += 1;
+  performanceWindowStepCount += 1;
   emitFrame();
+
+  emitPerformanceIfReady(currentConfig);
 
   if (simulationStepCount % 3 === 0) {
     emitObservationSample();
   }
+}
+
+function emitPerformanceIfReady(currentConfig: SolverConfig): void {
+  const now = performance.now();
+  const elapsedMilliseconds = now - performanceWindowStartedAt;
+
+  if (elapsedMilliseconds < 1000) {
+    return;
+  }
+
+  emit({
+    version: workerProtocolVersion,
+    type: "PERFORMANCE",
+    simulationStepsPerSecond: (performanceWindowStepCount * 1000) / elapsedMilliseconds,
+    gridCellCount: currentConfig.columns * currentConfig.rows,
+  });
+  resetPerformanceWindow();
+}
+
+function resetPerformanceWindow(): void {
+  performanceWindowStartedAt = performance.now();
+  performanceWindowStepCount = 0;
 }
 
 function emitObservationSample(): void {
