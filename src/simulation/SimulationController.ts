@@ -1,4 +1,4 @@
-import type { SolverConfig } from "../physics/solver";
+import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import {
   workerProtocolVersion,
   type WorkerCommand,
@@ -73,6 +73,10 @@ export class SimulationController {
 
   public setObserver(column: number, row: number): void {
     this.send({ version: workerProtocolVersion, type: "SET_OBSERVER", column, row });
+  }
+
+  public setBoundaries(cells: BoundaryCell[]): void {
+    this.send({ version: workerProtocolVersion, type: "SET_BOUNDARIES", cells });
   }
 
   public injectPulse(column: number, row: number, amplitude: number): void {

@@ -14,6 +14,12 @@ export interface SolverState {
   current: Float32Array;
   next: Float32Array;
   simulationTimeSeconds: number;
+  fixedBoundaryMask: Uint8Array;
+}
+
+export interface BoundaryCell {
+  column: number;
+  row: number;
 }
 
 const twoDimensionalStabilityLimit = 1 / Math.sqrt(2);
@@ -72,7 +78,28 @@ export function createSolverState(config: SolverConfig): SolverState {
     current: new Float32Array(cellCount),
     next: new Float32Array(cellCount),
     simulationTimeSeconds: 0,
+    fixedBoundaryMask: new Uint8Array(cellCount),
   };
+}
+
+export function setFixedBoundaryCells(
+  state: SolverState,
+  config: SolverConfig,
+  cells: BoundaryCell[],
+): void {
+  state.fixedBoundaryMask.fill(0);
+
+  for (const cell of cells) {
+    if (cell.column <= 0 || cell.column >= config.columns - 1 || cell.row <= 0 || cell.row >= config.rows - 1) {
+      continue;
+    }
+
+    const index = toIndex(config, cell.column, cell.row);
+    state.fixedBoundaryMask[index] = 1;
+    state.previous[index] = 0;
+    state.current[index] = 0;
+    state.next[index] = 0;
+  }
 }
 
 export function resetSolverState(state: SolverState): void {
@@ -117,6 +144,11 @@ export function stepSolver(state: SolverState, config: SolverConfig): void {
   for (let row = 1; row < config.rows - 1; row += 1) {
     for (let column = 1; column < config.columns - 1; column += 1) {
       const index = toIndex(config, column, row);
+
+      if (state.fixedBoundaryMask[index] === 1) {
+        state.next[index] = 0;
+        continue;
+      }
       const laplacian =
         state.current[toIndex(config, column - 1, row)] +
         state.current[toIndex(config, column + 1, row)] +

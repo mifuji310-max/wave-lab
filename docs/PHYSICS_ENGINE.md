@@ -107,6 +107,11 @@ remaining reflection before lessons rely on it.
 
 The exact physical interpretation of a “wall” must be documented. Fixed-value and zero-normal-gradient boundaries represent different idealizations and must not be mixed without explanation.
 
+The first editable wall prototype uses a fixed-value (`u = 0`) boundary. This
+idealization produces a sign-inverting reflection and is kept separate from the
+outer absorbing sponge. The UI must describe it as an idealized fixed wall,
+not a generic material surface.
+
 ## 6. Observation
 
 The observer samples \(u\) at a physical coordinate using a documented interpolation method.

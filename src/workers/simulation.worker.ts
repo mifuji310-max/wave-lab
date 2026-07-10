@@ -4,6 +4,7 @@ import {
   createSolverState,
   injectBipolarPulse,
   resetSolverState,
+  setFixedBoundaryCells,
   stepSolver,
   type SolverConfig,
   type SolverState,
@@ -88,6 +89,10 @@ function handleCommand(command: WorkerCommand): void {
         row: Math.max(1, Math.min(requireConfig().rows - 2, command.row)),
       };
       emitObservationSample();
+      return;
+    case "SET_BOUNDARIES":
+      setFixedBoundaryCells(requireState(), requireConfig(), command.cells);
+      emitFrame();
       return;
     case "INJECT_PULSE":
       injectBipolarPulse(requireState(), requireConfig(), command.column, command.row, command.amplitude);

@@ -4,6 +4,7 @@ import {
   calculateDampingPerSecond,
   createSolverState,
   injectBipolarPulse,
+  setFixedBoundaryCells,
   stepSolver,
   type SolverConfig,
 } from "./solver";
@@ -56,5 +57,14 @@ describe("solver", () => {
     expect(left).toBe(right);
     expect(left).toBe(above);
     expect(left).toBe(below);
+  });
+
+  it("keeps fixed wall cells at zero displacement", () => {
+    const state = createSolverState(stableConfig);
+    setFixedBoundaryCells(state, stableConfig, [{ column: 12, row: 12 }]);
+    injectBipolarPulse(state, stableConfig, 12, 12, 1);
+    stepSolver(state, stableConfig);
+
+    expect(state.current[12 * stableConfig.columns + 12]).toBe(0);
   });
 });

@@ -1,4 +1,5 @@
 import type { SolverConfig } from "../physics/solver";
+import type { BoundaryCell } from "../physics/solver";
 
 export const workerProtocolVersion = 1 as const;
 
@@ -11,6 +12,7 @@ export type WorkerCommand =
   | { version: typeof workerProtocolVersion; type: "SET_CONTINUOUS_SOURCE"; enabled: boolean }
   | { version: typeof workerProtocolVersion; type: "SET_SPEED"; multiplier: 0.25 | 0.5 | 1 | 2 }
   | { version: typeof workerProtocolVersion; type: "SET_OBSERVER"; column: number; row: number }
+  | { version: typeof workerProtocolVersion; type: "SET_BOUNDARIES"; cells: BoundaryCell[] }
   | {
       version: typeof workerProtocolVersion;
       type: "INJECT_PULSE";
