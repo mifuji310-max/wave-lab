@@ -65,6 +65,11 @@ The implementation must calculate and enforce a safety margin. UI parameters may
 
 A finite-duration source with a documented temporal envelope.
 
+The current tap prototype uses a bipolar initial-displacement packet so that
+both the raised and lowered parts of a wave are visible immediately. It is a
+temporary interaction aid, not the final finite-duration source model. A
+time-envelope source will replace it before lesson validation.
+
 ### Continuous source
 
 A sinusoidal source with:

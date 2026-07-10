@@ -17,13 +17,13 @@ const statusLabels: Record<SimulationStatus, string> = {
 };
 
 const prototypeConfig: SolverConfig = {
-  columns: 128,
-  rows: 160,
+  columns: 192,
+  rows: 192,
   waveSpeedCellsPerSecond: 1,
   cellSize: 1,
   timeStepSeconds: 0.5,
   dampingPerSecond: 0.02,
-  absorptionLayerCells: 16,
+  absorptionLayerCells: 20,
   absorptionMaxDampingPerSecond: 1.2,
 };
 
@@ -32,6 +32,8 @@ export function App() {
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>("loading");
   const [frame, setFrame] = useState<SimulationFrame>();
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [continuousSourceEnabled, setContinuousSourceEnabled] = useState(false);
+  const [displayMode, setDisplayMode] = useState<"color" | "monochrome">("color");
 
   useEffect(() => {
     const controller = new SimulationController(prototypeConfig, {
@@ -66,6 +68,22 @@ export function App() {
     setSimulationStatus("ready");
   };
 
+  const handleStep = () => {
+    controllerReference.current?.step();
+    setSimulationStatus("paused");
+  };
+
+  const handleContinuousSource = () => {
+    const nextEnabled = !continuousSourceEnabled;
+    controllerReference.current?.setContinuousSource(nextEnabled);
+    setContinuousSourceEnabled(nextEnabled);
+
+    if (nextEnabled && simulationStatus !== "running") {
+      controllerReference.current?.start();
+      setSimulationStatus("running");
+    }
+  };
+
   const handlePulse = (column: number, row: number) => {
     controllerReference.current?.injectPulse(column, row, 1.4);
 
@@ -93,7 +111,7 @@ export function App() {
       <section className="experiment" aria-labelledby="experiment-title">
         <div className="field-container">
           <p id="experiment-title">波を起こしてみよう</p>
-          <WaveCanvas frame={frame} onPulse={handlePulse} />
+          <WaveCanvas frame={frame} displayMode={displayMode} onPulse={handlePulse} />
           <p className="field-hint">フィールドをタップすると、波が広がります</p>
           <div className="color-legend" aria-label="波の高さの色の説明">
             <span>低い</span>
@@ -109,6 +127,15 @@ export function App() {
         </button>
         <button type="button" onClick={handleReset} disabled={controlsDisabled}>
           リセット
+        </button>
+        <button type="button" onClick={handleStep} disabled={controlsDisabled || isRunning}>
+          一歩進む
+        </button>
+        <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
+          連続波: {continuousSourceEnabled ? "ON" : "OFF"}
+        </button>
+        <button type="button" onClick={() => setDisplayMode((mode) => (mode === "color" ? "monochrome" : "color"))}>
+          {displayMode === "color" ? "白黒表示" : "色表示"}
         </button>
       </section>
       {errorMessage === undefined ? null : <p className="error-message">{errorMessage}</p>}

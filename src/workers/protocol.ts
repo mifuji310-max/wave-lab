@@ -8,6 +8,7 @@ export type WorkerCommand =
   | { version: typeof workerProtocolVersion; type: "PAUSE" }
   | { version: typeof workerProtocolVersion; type: "STEP" }
   | { version: typeof workerProtocolVersion; type: "RESET" }
+  | { version: typeof workerProtocolVersion; type: "SET_CONTINUOUS_SOURCE"; enabled: boolean }
   | {
       version: typeof workerProtocolVersion;
       type: "INJECT_PULSE";

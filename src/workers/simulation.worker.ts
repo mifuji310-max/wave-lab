@@ -2,7 +2,7 @@
 
 import {
   createSolverState,
-  injectGaussianPulse,
+  injectBipolarPulse,
   resetSolverState,
   stepSolver,
   type SolverConfig,
@@ -13,6 +13,7 @@ import { workerProtocolVersion, type WorkerCommand, type WorkerEvent } from "./p
 let config: SolverConfig | undefined;
 let state: SolverState | undefined;
 let timerId: number | undefined;
+let continuousSourceEnabled = false;
 
 self.onmessage = (message: MessageEvent<WorkerCommand>) => {
   try {
@@ -41,6 +42,7 @@ function handleCommand(command: WorkerCommand): void {
       stopLoop();
       config = command.config;
       state = createSolverState(config);
+      continuousSourceEnabled = false;
       emit({ version: workerProtocolVersion, type: "READY" });
       emitFrame();
       return;
@@ -59,8 +61,11 @@ function handleCommand(command: WorkerCommand): void {
       resetSolverState(requireState());
       emitFrame();
       return;
+    case "SET_CONTINUOUS_SOURCE":
+      continuousSourceEnabled = command.enabled;
+      return;
     case "INJECT_PULSE":
-      injectGaussianPulse(requireState(), requireConfig(), command.column, command.row, command.amplitude);
+      injectBipolarPulse(requireState(), requireConfig(), command.column, command.row, command.amplitude);
       emitFrame();
       return;
     case "DISPOSE":
@@ -87,7 +92,21 @@ function stopLoop(): void {
 }
 
 function stepAndEmit(): void {
-  stepSolver(requireState(), requireConfig());
+  const currentState = requireState();
+  const currentConfig = requireConfig();
+
+  if (continuousSourceEnabled) {
+    const sourceAmplitude = Math.sin(currentState.simulationTimeSeconds * 10) * 0.16;
+    injectBipolarPulse(
+      currentState,
+      currentConfig,
+      Math.floor(currentConfig.columns / 2),
+      Math.floor(currentConfig.rows / 2),
+      sourceAmplitude,
+    );
+  }
+
+  stepSolver(currentState, currentConfig);
   emitFrame();
 }
 

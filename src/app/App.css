@@ -87,8 +87,9 @@ h1 {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px;
-  width: min(100%, 640px);
-  aspect-ratio: 4 / 5;
+  width: min(100%, 960px);
+  max-height: 100%;
+  aspect-ratio: 1;
   padding: 16px;
   border: 2px solid #60a5fa;
   border-radius: 24px;
@@ -143,7 +144,7 @@ h1 {
 
 .control-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 12px 16px max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid #334155;
@@ -176,6 +177,7 @@ h1 {
   }
 
   .field-container {
-    aspect-ratio: 16 / 7;
+    width: min(100%, 960px);
+    aspect-ratio: 16 / 9;
   }
 }

@@ -3,10 +3,11 @@ import type { SimulationFrame } from "../simulation/SimulationController";
 
 interface WaveCanvasProps {
   frame: SimulationFrame | undefined;
+  displayMode: "color" | "monochrome";
   onPulse: (column: number, row: number) => void;
 }
 
-export function WaveCanvas({ frame, onPulse }: WaveCanvasProps) {
+export function WaveCanvas({ frame, displayMode, onPulse }: WaveCanvasProps) {
   const canvasReference = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -27,7 +28,10 @@ export function WaveCanvas({ frame, onPulse }: WaveCanvasProps) {
     const image = context.createImageData(frame.columns, frame.rows);
 
     for (let index = 0; index < frame.field.length; index += 1) {
-      const color = colorForDisplacement(frame.field[index]);
+      const color =
+        displayMode === "color"
+          ? colorForDisplacement(frame.field[index])
+          : monochromeForDisplacement(frame.field[index]);
       const pixelIndex = index * 4;
       image.data[pixelIndex] = color.red;
       image.data[pixelIndex + 1] = color.green;
@@ -86,4 +90,11 @@ function colorForDisplacement(displacement: number): { red: number; green: numbe
     green: Math.round(247 - magnitude * 107),
     blue: 255,
   };
+}
+
+function monochromeForDisplacement(displacement: number): { red: number; green: number; blue: number } {
+  const normalized = Math.max(-1, Math.min(1, displacement * 0.7));
+  const lightness = Math.round(180 + normalized * 68);
+
+  return { red: lightness, green: lightness, blue: lightness };
 }

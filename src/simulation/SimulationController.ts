@@ -45,6 +45,14 @@ export class SimulationController {
     this.send({ version: workerProtocolVersion, type: "RESET" });
   }
 
+  public step(): void {
+    this.send({ version: workerProtocolVersion, type: "STEP" });
+  }
+
+  public setContinuousSource(enabled: boolean): void {
+    this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCE", enabled });
+  }
+
   public injectPulse(column: number, row: number, amplitude: number): void {
     this.send({
       version: workerProtocolVersion,

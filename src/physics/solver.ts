@@ -82,14 +82,14 @@ export function resetSolverState(state: SolverState): void {
   state.simulationTimeSeconds = 0;
 }
 
-export function injectGaussianPulse(
+export function injectBipolarPulse(
   state: SolverState,
   config: SolverConfig,
   column: number,
   row: number,
   amplitude: number,
 ): void {
-  const radiusCells = 3;
+  const radiusCells = 5;
 
   for (let offsetRow = -radiusCells; offsetRow <= radiusCells; offsetRow += 1) {
     for (let offsetColumn = -radiusCells; offsetColumn <= radiusCells; offsetColumn += 1) {
@@ -101,7 +101,9 @@ export function injectGaussianPulse(
       }
 
       const distanceSquared = offsetColumn ** 2 + offsetRow ** 2;
-      const kernelWeight = Math.exp(-distanceSquared / 4);
+      // A zero-mean, Mexican-hat-like packet makes a crest and trough visible
+      // from a single tap. It is an initial condition, not the final source.
+      const kernelWeight = (1 - distanceSquared / 6) * Math.exp(-distanceSquared / 6);
       state.current[toIndex(config, targetColumn, targetRow)] += amplitude * kernelWeight;
     }
   }

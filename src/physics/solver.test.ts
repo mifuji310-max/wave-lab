@@ -3,7 +3,7 @@ import {
   calculateCourantNumber,
   calculateDampingPerSecond,
   createSolverState,
-  injectGaussianPulse,
+  injectBipolarPulse,
   stepSolver,
   type SolverConfig,
 } from "./solver";
@@ -43,9 +43,9 @@ describe("solver", () => {
     expect([...state.current].every((value) => value === 0)).toBe(true);
   });
 
-  it("preserves symmetry for a centered Gaussian pulse after one step", () => {
+  it("preserves symmetry for a centered bipolar pulse after one step", () => {
     const state = createSolverState(stableConfig);
-    injectGaussianPulse(state, stableConfig, 12, 12, 1);
+    injectBipolarPulse(state, stableConfig, 12, 12, 1);
     stepSolver(state, stableConfig);
 
     const left = state.current[12 * stableConfig.columns + 11];
