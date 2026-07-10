@@ -108,7 +108,10 @@ function stepAndEmit(): void {
   const currentConfig = requireConfig();
 
   if (continuousSourceEnabled) {
-    const sourceAmplitude = Math.sin(currentState.simulationTimeSeconds * 10) * 0.16;
+    // With c = 1 cell/s, this angular frequency produces a wavelength of
+    // approximately 24 cells, which is long enough to resolve clearly.
+    const sourceAngularFrequency = (2 * Math.PI) / 24;
+    const sourceAmplitude = Math.sin(currentState.simulationTimeSeconds * sourceAngularFrequency) * 0.12;
     injectBipolarPulse(
       currentState,
       currentConfig,

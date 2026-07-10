@@ -70,6 +70,9 @@ both the raised and lowered parts of a wave are visible immediately. It is a
 temporary interaction aid, not the final finite-duration source model. A
 time-envelope source will replace it before lesson validation.
 
+The prototype continuous source targets a wavelength of approximately 24 grid
+cells. This is a normalized numerical wavelength, not a real-world length.
+
 ### Continuous source
 
 A sinusoidal source with:

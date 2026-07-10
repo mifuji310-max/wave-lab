@@ -89,7 +89,7 @@ export function injectBipolarPulse(
   row: number,
   amplitude: number,
 ): void {
-  const radiusCells = 5;
+  const radiusCells = 10;
 
   for (let offsetRow = -radiusCells; offsetRow <= radiusCells; offsetRow += 1) {
     for (let offsetColumn = -radiusCells; offsetColumn <= radiusCells; offsetColumn += 1) {
@@ -103,7 +103,7 @@ export function injectBipolarPulse(
       const distanceSquared = offsetColumn ** 2 + offsetRow ** 2;
       // A zero-mean, Mexican-hat-like packet makes a crest and trough visible
       // from a single tap. It is an initial condition, not the final source.
-      const kernelWeight = (1 - distanceSquared / 6) * Math.exp(-distanceSquared / 6);
+      const kernelWeight = (1 - distanceSquared / 24) * Math.exp(-distanceSquared / 24);
       state.current[toIndex(config, targetColumn, targetRow)] += amplitude * kernelWeight;
     }
   }

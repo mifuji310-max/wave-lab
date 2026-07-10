@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ObservationPanel } from "../observation/ObservationPanel";
 import type { SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
+import { appVersion } from "../shared/version";
 import {
   SimulationController,
   type ObservationSample,
@@ -111,7 +112,10 @@ export function App() {
       <header className="app-header">
         <div>
           <p className="eyebrow">実験して理解する</p>
-          <h1>Wave Lab</h1>
+          <div className="title-row">
+            <h1>Wave Lab</h1>
+            <span className="version-label">v{appVersion}</span>
+          </div>
         </div>
         <p className="status" aria-live="polite">
           {statusLabels[simulationStatus]}
