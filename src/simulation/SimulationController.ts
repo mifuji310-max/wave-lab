@@ -1,4 +1,4 @@
-import type { SolverConfig } from "../physics/solver";
+import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import {
   workerProtocolVersion,
   type WorkerCommand,
@@ -17,6 +17,12 @@ export interface SimulationControllerCallbacks {
   onFrame: (frame: SimulationFrame) => void;
   onError: (message: string) => void;
   onObservationSample: (sample: ObservationSample) => void;
+  onPerformance: (measurement: PerformanceMeasurement) => void;
+}
+
+export interface PerformanceMeasurement {
+  simulationStepsPerSecond: number;
+  gridCellCount: number;
 }
 
 export interface ObservationSample {
@@ -61,8 +67,16 @@ export class SimulationController {
     this.send({ version: workerProtocolVersion, type: "SET_CONTINUOUS_SOURCE", enabled });
   }
 
+  public setSpeed(multiplier: 0.25 | 0.5 | 1 | 2): void {
+    this.send({ version: workerProtocolVersion, type: "SET_SPEED", multiplier });
+  }
+
   public setObserver(column: number, row: number): void {
     this.send({ version: workerProtocolVersion, type: "SET_OBSERVER", column, row });
+  }
+
+  public setBoundaries(cells: BoundaryCell[]): void {
+    this.send({ version: workerProtocolVersion, type: "SET_BOUNDARIES", cells });
   }
 
   public injectPulse(column: number, row: number, amplitude: number): void {
@@ -105,6 +119,12 @@ export class SimulationController {
       case "WARNING":
       case "ERROR":
         this.callbacks.onError(event.message);
+        return;
+      case "PERFORMANCE":
+        this.callbacks.onPerformance({
+          simulationStepsPerSecond: event.simulationStepsPerSecond,
+          gridCellCount: event.gridCellCount,
+        });
         return;
       case "OBSERVATION_SAMPLE":
         this.callbacks.onObservationSample({

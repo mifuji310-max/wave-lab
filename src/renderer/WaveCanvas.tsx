@@ -1,16 +1,28 @@
 import { useEffect, useRef } from "react";
+import type { BoundaryCell } from "../physics/solver";
 import type { SimulationFrame } from "../simulation/SimulationController";
 
 interface WaveCanvasProps {
   frame: SimulationFrame | undefined;
   displayMode: "color" | "monochrome";
   observer: { column: number; row: number } | undefined;
-  interactionMode: "pulse" | "observer";
+  boundaryCells: BoundaryCell[];
+  interactionMode: "pulse" | "observer" | "wall" | "slit" | "erase";
   onFieldTap: (column: number, row: number) => void;
+  onFieldDrag: (from: BoundaryCell, to: BoundaryCell) => void;
 }
 
-export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFieldTap }: WaveCanvasProps) {
+export function WaveCanvas({
+  frame,
+  displayMode,
+  observer,
+  boundaryCells,
+  interactionMode,
+  onFieldTap,
+  onFieldDrag,
+}: WaveCanvasProps) {
   const canvasReference = useRef<HTMLCanvasElement>(null);
+  const previousPointerCell = useRef<BoundaryCell | null>(null);
 
   useEffect(() => {
     const canvas = canvasReference.current;
@@ -43,6 +55,11 @@ export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFi
 
     context.putImageData(image, 0, 0);
 
+    context.fillStyle = "#1e293b";
+    for (const cell of boundaryCells) {
+      context.fillRect(cell.column, cell.row, 1, 1);
+    }
+
     if (observer !== undefined) {
       context.beginPath();
       context.arc(observer.column + 0.5, observer.row + 0.5, 4, 0, Math.PI * 2);
@@ -52,7 +69,7 @@ export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFi
       context.strokeStyle = "#0f172a";
       context.stroke();
     }
-  }, [displayMode, frame, observer]);
+  }, [boundaryCells, displayMode, frame, observer]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (frame === undefined) {
@@ -69,7 +86,33 @@ export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFi
       Math.min(frame.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * frame.rows)),
     );
 
+    const cell = { column, row };
+    previousPointerCell.current = cell;
+    event.currentTarget.setPointerCapture(event.pointerId);
     onFieldTap(column, row);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (previousPointerCell.current === null) {
+      return;
+    }
+
+    const cell = cellFromPointer(event, frame);
+
+    if (cell === undefined || (cell.column === previousPointerCell.current.column && cell.row === previousPointerCell.current.row)) {
+      return;
+    }
+
+    onFieldDrag(previousPointerCell.current, cell);
+    previousPointerCell.current = cell;
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    previousPointerCell.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   return (
@@ -79,14 +122,45 @@ export function WaveCanvas({ frame, displayMode, observer, interactionMode, onFi
         className="wave-canvas"
         style={{ aspectRatio: frame === undefined ? "4 / 5" : `${frame.columns} / ${frame.rows}` }}
         onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         aria-label={
           interactionMode === "pulse"
             ? "波の実験フィールド。タップして波を起こします。"
-            : "波の実験フィールド。タップして観測点を置きます。"
+            : interactionMode === "observer"
+              ? "波の実験フィールド。タップして観測点を置きます。"
+              : interactionMode === "wall"
+                ? "波の実験フィールド。ドラッグして壁を描きます。"
+                : interactionMode === "slit"
+                  ? "波の実験フィールド。タップして単スリットを置きます。"
+                : "波の実験フィールド。ドラッグして壁を消します。"
         }
       />
     </div>
   );
+}
+
+function cellFromPointer(
+  event: React.PointerEvent<HTMLCanvasElement>,
+  frame: SimulationFrame | undefined,
+): BoundaryCell | undefined {
+  if (frame === undefined) {
+    return undefined;
+  }
+
+  const bounds = event.currentTarget.getBoundingClientRect();
+
+  return {
+    column: Math.max(
+      1,
+      Math.min(frame.columns - 2, Math.floor(((event.clientX - bounds.left) / bounds.width) * frame.columns)),
+    ),
+    row: Math.max(
+      1,
+      Math.min(frame.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * frame.rows)),
+    ),
+  };
 }
 
 function colorForDisplacement(displacement: number): { red: number; green: number; blue: number } {

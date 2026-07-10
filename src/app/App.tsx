@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { ObservationPanel } from "../observation/ObservationPanel";
-import type { SolverConfig } from "../physics/solver";
+import { createSingleSlitBoundaryCells } from "../physics/boundaries";
+import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
+import { appVersion } from "../shared/version";
 import {
   SimulationController,
   type ObservationSample,
+  type PerformanceMeasurement,
   type SimulationFrame,
 } from "../simulation/SimulationController";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
-type InteractionMode = "pulse" | "observer";
+type InteractionMode = "pulse" | "observer" | "wall" | "slit" | "erase";
 
 const statusLabels: Record<SimulationStatus, string> = {
   loading: "計算を準備中",
@@ -23,6 +26,7 @@ const prototypeConfig = createPrototypeConfig();
 
 export function App() {
   const controllerReference = useRef<SimulationController | null>(null);
+  const boundaryCellsReference = useRef<Map<string, BoundaryCell>>(new Map());
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>("loading");
   const [frame, setFrame] = useState<SimulationFrame>();
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -32,6 +36,9 @@ export function App() {
   const [observer, setObserver] = useState<{ column: number; row: number }>();
   const [observationSamples, setObservationSamples] = useState<ObservationSample[]>([]);
   const [observationPanelOpen, setObservationPanelOpen] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<0.25 | 0.5 | 1 | 2>(1);
+  const [performanceMeasurement, setPerformanceMeasurement] = useState<PerformanceMeasurement>();
+  const [boundaryCells, setBoundaryCells] = useState<BoundaryCell[]>([]);
 
   useEffect(() => {
     const controller = new SimulationController(prototypeConfig, {
@@ -40,6 +47,7 @@ export function App() {
       onObservationSample: (sample) => {
         setObservationSamples((samples) => [...samples.slice(-179), sample]);
       },
+      onPerformance: setPerformanceMeasurement,
       onError: (message) => {
         setErrorMessage(message);
         setSimulationStatus("error");
@@ -95,12 +103,72 @@ export function App() {
       return;
     }
 
+    if (interactionMode === "wall" || interactionMode === "erase") {
+      updateBoundaries([{ column, row }], interactionMode === "erase");
+      return;
+    }
+
+    if (interactionMode === "slit") {
+      if (frame === undefined) {
+        return;
+      }
+
+      updateBoundaries(
+        createSingleSlitBoundaryCells(frame.columns, frame.rows, column, row),
+        false,
+      );
+      return;
+    }
+
     controllerReference.current?.injectPulse(column, row, 1.4);
 
     if (simulationStatus !== "running") {
       controllerReference.current?.start();
       setSimulationStatus("running");
     }
+  };
+
+  const handleFieldDrag = (from: BoundaryCell, to: BoundaryCell) => {
+    if (interactionMode !== "wall" && interactionMode !== "erase") {
+      return;
+    }
+
+    updateBoundaries(rasterizeLine(from, to), interactionMode === "erase");
+  };
+
+  const updateBoundaries = (centers: BoundaryCell[], erase: boolean) => {
+    const nextBoundaryCells = new Map(boundaryCellsReference.current);
+
+    for (const center of centers) {
+      for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
+        for (let columnOffset = -1; columnOffset <= 1; columnOffset += 1) {
+          const cell = {
+            column: center.column + columnOffset,
+            row: center.row + rowOffset,
+          };
+          const key = `${cell.column}:${cell.row}`;
+
+          if (erase) {
+            nextBoundaryCells.delete(key);
+          } else {
+            nextBoundaryCells.set(key, cell);
+          }
+        }
+      }
+    }
+
+    boundaryCellsReference.current = nextBoundaryCells;
+    const cells = [...nextBoundaryCells.values()];
+    setBoundaryCells(cells);
+    controllerReference.current?.setBoundaries(cells);
+  };
+
+  const handleSpeed = () => {
+    const speeds: Array<0.25 | 0.5 | 1 | 2> = [0.25, 0.5, 1, 2];
+    const currentIndex = speeds.indexOf(playbackSpeed);
+    const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
+    controllerReference.current?.setSpeed(nextSpeed);
+    setPlaybackSpeed(nextSpeed);
   };
 
   const isRunning = simulationStatus === "running";
@@ -111,24 +179,34 @@ export function App() {
       <header className="app-header">
         <div>
           <p className="eyebrow">実験して理解する</p>
-          <h1>Wave Lab</h1>
+          <div className="title-row">
+            <h1>Wave Lab</h1>
+            <span className="version-label">v{appVersion}</span>
+          </div>
         </div>
         <p className="status" aria-live="polite">
           {statusLabels[simulationStatus]}
         </p>
+        {performanceMeasurement === undefined ? null : (
+          <p className="performance-label">
+            {Math.round(performanceMeasurement.simulationStepsPerSecond)} step/s
+          </p>
+        )}
       </header>
 
       <section className="experiment" aria-labelledby="experiment-title">
         <div className="field-container">
           <h2 id="experiment-title" className="field-title">
-            {interactionMode === "pulse" ? "タップして波を起こす" : "タップして観測点を置く"}
+            {fieldTitleForMode(interactionMode)}
           </h2>
           <WaveCanvas
             frame={frame}
             displayMode={displayMode}
             observer={observer}
+            boundaryCells={boundaryCells}
             interactionMode={interactionMode}
             onFieldTap={handleFieldTap}
+            onFieldDrag={handleFieldDrag}
           />
           <div className="color-legend" aria-label="波の高さの色の説明">
             <span>低い</span>
@@ -160,6 +238,27 @@ export function App() {
         >
           観測点
         </button>
+        <button
+          type="button"
+          className={interactionMode === "wall" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("wall")}
+        >
+          壁を描く
+        </button>
+        <button
+          type="button"
+          className={interactionMode === "slit" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("slit")}
+        >
+          単スリット
+        </button>
+        <button
+          type="button"
+          className={interactionMode === "erase" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("erase")}
+        >
+          壁を消す
+        </button>
         <button type="button" className="primary-control" onClick={handlePlayPause} disabled={controlsDisabled}>
           {isRunning ? "一時停止" : "再生"}
         </button>
@@ -172,6 +271,9 @@ export function App() {
         <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
           連続波: {continuousSourceEnabled ? "ON" : "OFF"}
         </button>
+        <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
+          速度: {playbackSpeed}×
+        </button>
         <button type="button" onClick={() => setDisplayMode((mode) => (mode === "color" ? "monochrome" : "color"))}>
           {displayMode === "color" ? "白黒表示" : "色表示"}
         </button>
@@ -179,6 +281,52 @@ export function App() {
       {errorMessage === undefined ? null : <p className="error-message">{errorMessage}</p>}
     </main>
   );
+}
+
+function rasterizeLine(from: BoundaryCell, to: BoundaryCell): BoundaryCell[] {
+  const cells: BoundaryCell[] = [];
+  const columnDistance = Math.abs(to.column - from.column);
+  const rowDistance = Math.abs(to.row - from.row);
+  const columnDirection = from.column < to.column ? 1 : -1;
+  const rowDirection = from.row < to.row ? 1 : -1;
+  let error = columnDistance - rowDistance;
+  let column = from.column;
+  let row = from.row;
+
+  while (true) {
+    cells.push({ column, row });
+
+    if (column === to.column && row === to.row) {
+      return cells;
+    }
+
+    const doubledError = error * 2;
+
+    if (doubledError > -rowDistance) {
+      error -= rowDistance;
+      column += columnDirection;
+    }
+
+    if (doubledError < columnDistance) {
+      error += columnDistance;
+      row += rowDirection;
+    }
+  }
+}
+
+function fieldTitleForMode(mode: InteractionMode): string {
+  switch (mode) {
+    case "pulse":
+      return "タップして波を起こす";
+    case "observer":
+      return "タップして観測点を置く";
+    case "wall":
+      return "ドラッグして壁を描く";
+    case "slit":
+      return "タップして単スリットを置く";
+    case "erase":
+      return "ドラッグして壁を消す";
+  }
 }
 
 function createPrototypeConfig(): SolverConfig {

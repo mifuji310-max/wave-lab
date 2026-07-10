@@ -62,6 +62,13 @@ button:disabled {
   margin: 0;
 }
 
+.performance-label {
+  margin: 0;
+  color: #86efac;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
 .eyebrow {
   color: #bfdbfe;
   font-size: 0.7rem;
@@ -70,6 +77,17 @@ button:disabled {
 h1 {
   margin: 0;
   font-size: 1.125rem;
+}
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.version-label {
+  color: #94a3b8;
+  font-size: 0.65rem;
 }
 
 .status {

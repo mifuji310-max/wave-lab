@@ -70,6 +70,9 @@ both the raised and lowered parts of a wave are visible immediately. It is a
 temporary interaction aid, not the final finite-duration source model. A
 time-envelope source will replace it before lesson validation.
 
+The prototype continuous source targets a wavelength of approximately 24 grid
+cells. This is a normalized numerical wavelength, not a real-world length.
+
 ### Continuous source
 
 A sinusoidal source with:
@@ -103,6 +106,15 @@ non-reflecting boundary. The implementation must measure and document the
 remaining reflection before lessons rely on it.
 
 The exact physical interpretation of a “wall” must be documented. Fixed-value and zero-normal-gradient boundaries represent different idealizations and must not be mixed without explanation.
+
+The first editable wall prototype uses a fixed-value (`u = 0`) boundary. This
+idealization produces a sign-inverting reflection and is kept separate from the
+outer absorbing sponge. The UI must describe it as an idealized fixed wall,
+not a generic material surface.
+
+The single-slit tool creates the same fixed-value barrier with a deliberately
+open group of cells at its center. Diffraction must arise from the solver at
+that opening; the renderer may not add a diffraction effect.
 
 ## 6. Observation
 
