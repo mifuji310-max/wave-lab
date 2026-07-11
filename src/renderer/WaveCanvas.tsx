@@ -5,7 +5,14 @@ import type { ContinuousSourceConfig } from "../simulation/types";
 import { writeDisplacementColors } from "./colorScale";
 import { cellInVisibleDomain, createVisibleDomain } from "./visibleDomain";
 
-type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
+type InteractionMode =
+  | "pulse"
+  | "observer"
+  | "source"
+  | "sourceSelect"
+  | "wall"
+  | "slit"
+  | "erase";
 
 interface WaveCanvasProps {
   frameReference: RefObject<SimulationFrame | undefined>;
@@ -288,7 +295,9 @@ function fieldLabel(mode: InteractionMode): string {
     case "observer":
       return "波の実験フィールド。タップして観測点を置きます。";
     case "source":
-      return "波の実験フィールド。タップして連続波源を追加または削除します。";
+      return "波の実験フィールド。タップして連続波源を追加または選択します。";
+    case "sourceSelect":
+      return "波の実験フィールド。既存の連続波源をタップすると設定を開きます。";
     case "wall":
       return "波の実験フィールド。ドラッグして壁を描きます。";
     case "slit":
