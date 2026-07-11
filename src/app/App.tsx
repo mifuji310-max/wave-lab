@@ -96,7 +96,7 @@ export function App() {
       const pendingSamples = pendingObservationSamplesReference.current;
       pendingObservationSamplesReference.current = [];
       setObservationSamples((samples) => [...samples, ...pendingSamples].slice(-180));
-    }, 200);
+    }, 50);
 
     return () => window.clearInterval(timerId);
   }, []);
@@ -386,7 +386,7 @@ export function App() {
           />
           <div
             className="color-legend"
-            aria-label="青は低い変位、薄い灰色は基準の0、赤は高い変位"
+            aria-label="青は低い変位、緑は基準の0、赤は高い変位"
           >
             <span>低い</span>
             <span className="legend-scale">
