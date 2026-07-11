@@ -29,6 +29,8 @@ Gestures must have visible alternatives for discoverability and accessibility.
 
 Continuous-source and observation markers are vector overlays. They remain
 sharp when the low-resolution simulation grid is enlarged on a phone or PC.
+The source marker is a small, plain colored circle so it identifies position
+without competing visually with the wave field.
 
 ## 3. Modes
 

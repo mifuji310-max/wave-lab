@@ -27,6 +27,7 @@ const statusLabels: Record<SimulationStatus, string> = {
 };
 
 export function App() {
+  const [solverConfig] = useState<SolverConfig>(createPrototypeConfig);
   const controllerReference = useRef<SimulationController | null>(null);
   const boundaryCellsReference = useRef<Map<string, BoundaryCell>>(new Map());
   const sourceIdReference = useRef(1);
@@ -54,7 +55,7 @@ export function App() {
   const [renderFramesPerSecond, setRenderFramesPerSecond] = useState<number>();
 
   useEffect(() => {
-    const controller = new SimulationController(createPrototypeConfig(), {
+    const controller = new SimulationController(solverConfig, {
       onReady: () => setSimulationStatus("ready"),
       onFrame: (nextFrame) => {
         latestFrameReference.current = nextFrame;
@@ -85,7 +86,7 @@ export function App() {
       controller.dispose();
       controllerReference.current = null;
     };
-  }, []);
+  }, [solverConfig]);
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
@@ -375,6 +376,7 @@ export function App() {
           <WaveCanvas
             frameReference={latestFrameReference}
             gridSize={gridSize}
+            absorptionLayerCells={solverConfig.absorptionLayerCells}
             displayMode={displayMode}
             observer={observer}
             continuousSources={continuousSources}
@@ -410,6 +412,7 @@ export function App() {
           source={selectedSource}
           columns={gridSize.columns}
           rows={gridSize.rows}
+          visibleInsetCells={solverConfig.absorptionLayerCells}
           onChange={updateContinuousSource}
           onDelete={deleteContinuousSource}
           onClose={() => setSelectedSourceId(undefined)}

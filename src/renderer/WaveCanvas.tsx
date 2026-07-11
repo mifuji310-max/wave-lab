@@ -3,12 +3,14 @@ import type { BoundaryCell } from "../physics/solver";
 import type { SimulationFrame } from "../simulation/SimulationController";
 import type { ContinuousSourceConfig } from "../simulation/types";
 import { writeDisplacementColors } from "./colorScale";
+import { cellInVisibleDomain, createVisibleDomain } from "./visibleDomain";
 
 type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
 
 interface WaveCanvasProps {
   frameReference: RefObject<SimulationFrame | undefined>;
   gridSize: { columns: number; rows: number } | undefined;
+  absorptionLayerCells: number;
   displayMode: "color" | "monochrome";
   observer: { column: number; row: number } | undefined;
   continuousSources: ContinuousSourceConfig[];
@@ -22,6 +24,7 @@ interface WaveCanvasProps {
 export function WaveCanvas({
   frameReference,
   gridSize,
+  absorptionLayerCells,
   displayMode,
   observer,
   continuousSources,
@@ -34,6 +37,8 @@ export function WaveCanvas({
   const canvasReference = useRef<HTMLCanvasElement>(null);
   const previousPointerCell = useRef<BoundaryCell | null>(null);
   const strokeCells = useRef<BoundaryCell[]>([]);
+  const visibleDomain =
+    gridSize === undefined ? undefined : createVisibleDomain(gridSize, absorptionLayerCells);
 
   useEffect(() => {
     const canvas = canvasReference.current;
@@ -58,20 +63,22 @@ export function WaveCanvas({
       const frame = frameReference.current;
 
       if (frame !== undefined && frame !== lastRenderedFrame) {
-        if (canvas.width !== frame.columns || canvas.height !== frame.rows) {
-          canvas.width = frame.columns;
-          canvas.height = frame.rows;
+        const domain = createVisibleDomain(frame, absorptionLayerCells);
+
+        if (canvas.width !== domain.columns || canvas.height !== domain.rows) {
+          canvas.width = domain.columns;
+          canvas.height = domain.rows;
           image = context.createImageData(frame.columns, frame.rows);
         } else if (image === undefined) {
           image = context.createImageData(frame.columns, frame.rows);
         }
 
         writeDisplacementColors(image.data, frame.field, displayMode);
-        context.putImageData(image, 0, 0);
+        context.putImageData(image, -domain.left, -domain.top);
         context.fillStyle = "#1e293b";
 
         for (const cell of boundaryCells) {
-          context.fillRect(cell.column, cell.row, 1, 1);
+          context.fillRect(cell.column - domain.left, cell.row - domain.top, 1, 1);
         }
 
         lastRenderedFrame = frame;
@@ -93,10 +100,10 @@ export function WaveCanvas({
     animationFrameId = requestAnimationFrame(drawLatestFrame);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [boundaryCells, displayMode, frameReference, onRenderFramesPerSecond]);
+  }, [absorptionLayerCells, boundaryCells, displayMode, frameReference, onRenderFramesPerSecond]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const cell = cellFromPointer(event, gridSize);
+    const cell = cellFromPointer(event, visibleDomain);
 
     if (cell === undefined) {
       return;
@@ -108,7 +115,12 @@ export function WaveCanvas({
     if (interactionMode === "wall" || interactionMode === "erase") {
       previousPointerCell.current = cell;
       strokeCells.current = [cell];
-      drawStrokePreview(event.currentTarget, [cell], interactionMode === "erase");
+      drawStrokePreview(
+        event.currentTarget,
+        [cell],
+        interactionMode === "erase",
+        visibleDomain,
+      );
       return;
     }
 
@@ -121,7 +133,7 @@ export function WaveCanvas({
     }
 
     event.preventDefault();
-    const cell = cellFromPointer(event, gridSize);
+    const cell = cellFromPointer(event, visibleDomain);
 
     if (cell === undefined || sameCell(cell, previousPointerCell.current)) {
       return;
@@ -130,7 +142,7 @@ export function WaveCanvas({
     const segment = rasterizeLine(previousPointerCell.current, cell);
     strokeCells.current.push(...segment.slice(1));
     previousPointerCell.current = cell;
-    drawStrokePreview(event.currentTarget, segment, interactionMode === "erase");
+    drawStrokePreview(event.currentTarget, segment, interactionMode === "erase", visibleDomain);
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -151,7 +163,10 @@ export function WaveCanvas({
     <div className="wave-canvas-viewport">
       <div
         className="wave-field-layer"
-        style={{ aspectRatio: gridSize === undefined ? "4 / 5" : `${gridSize.columns} / ${gridSize.rows}` }}
+        style={{
+          aspectRatio:
+            visibleDomain === undefined ? "4 / 5" : `${visibleDomain.columns} / ${visibleDomain.rows}`,
+        }}
       >
         <canvas
           ref={canvasReference}
@@ -162,10 +177,10 @@ export function WaveCanvas({
           onPointerCancel={handlePointerUp}
           aria-label={fieldLabel(interactionMode)}
         />
-        {gridSize === undefined ? null : (
+        {visibleDomain === undefined ? null : (
           <svg
             className="field-marker-overlay"
-            viewBox={`0 0 ${gridSize.columns} ${gridSize.rows}`}
+            viewBox={`${visibleDomain.left} ${visibleDomain.top} ${visibleDomain.columns} ${visibleDomain.rows}`}
             aria-hidden="true"
           >
             {continuousSources.map((source) => (
@@ -174,7 +189,7 @@ export function WaveCanvas({
                 className={`source-marker ${source.enabled ? "" : "disabled"}`}
                 transform={`translate(${source.column + 0.5} ${source.row + 0.5})`}
               >
-                <circle className="source-marker-dot" r="4.25" />
+                <circle className="source-marker-dot" r="3.25" />
               </g>
             ))}
             {observer === undefined ? null : (
@@ -190,40 +205,45 @@ export function WaveCanvas({
   );
 }
 
-function drawStrokePreview(canvas: HTMLCanvasElement, cells: BoundaryCell[], erase: boolean): void {
+function drawStrokePreview(
+  canvas: HTMLCanvasElement,
+  cells: BoundaryCell[],
+  erase: boolean,
+  visibleDomain: ReturnType<typeof createVisibleDomain> | undefined,
+): void {
   const context = canvas.getContext("2d", { alpha: false });
 
-  if (context === null) {
+  if (context === null || visibleDomain === undefined) {
     return;
   }
 
   context.fillStyle = erase ? "#ef4444" : "#1e293b";
 
   for (const cell of cells) {
-    context.fillRect(cell.column - 1, cell.row - 1, 3, 3);
+    context.fillRect(
+      cell.column - visibleDomain.left - 1,
+      cell.row - visibleDomain.top - 1,
+      3,
+      3,
+    );
   }
 }
 
 function cellFromPointer(
   event: React.PointerEvent<HTMLCanvasElement>,
-  gridSize: { columns: number; rows: number } | undefined,
+  visibleDomain: ReturnType<typeof createVisibleDomain> | undefined,
 ): BoundaryCell | undefined {
-  if (gridSize === undefined) {
+  if (visibleDomain === undefined) {
     return undefined;
   }
 
   const bounds = event.currentTarget.getBoundingClientRect();
 
-  return {
-    column: Math.max(
-      1,
-      Math.min(gridSize.columns - 2, Math.floor(((event.clientX - bounds.left) / bounds.width) * gridSize.columns)),
-    ),
-    row: Math.max(
-      1,
-      Math.min(gridSize.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * gridSize.rows)),
-    ),
-  };
+  return cellInVisibleDomain(
+    visibleDomain,
+    (event.clientX - bounds.left) / bounds.width,
+    (event.clientY - bounds.top) / bounds.height,
+  );
 }
 
 function rasterizeLine(from: BoundaryCell, to: BoundaryCell): BoundaryCell[] {

@@ -71,6 +71,7 @@ The current prototype includes:
 8. Grouped mobile controls and an on-screen Android/rotation performance diagnostic
 9. Crisp vector source markers, non-overlapping source settings, and improved outer absorption
 10. A requestAnimationFrame renderer path and measured numerical validation tests
+11. A cropped visible domain that hides the numerical absorption layer
 
 The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 
