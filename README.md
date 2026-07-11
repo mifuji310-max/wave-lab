@@ -72,6 +72,7 @@ The current prototype includes:
 9. Crisp vector source markers, non-overlapping source settings, and improved outer absorption
 10. A requestAnimationFrame renderer path and measured numerical validation tests
 11. A cropped visible domain that hides the numerical absorption layer
+12. Touch-safe source parameter sliders for scrollable mobile settings
 
 The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 

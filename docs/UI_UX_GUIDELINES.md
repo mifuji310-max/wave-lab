@@ -15,6 +15,9 @@ A new user should produce a visible wave within three seconds.
 - Swipe observation handle upward: open bottom sheet
 
 Gestures must have visible alternatives for discoverability and accessibility.
+Range controls inside a scrollable settings sheet must prefer vertical page
+scrolling. A vertical touch gesture or cancelled touch restores the value from
+the start of that gesture; horizontal drags and deliberate taps still edit it.
 
 ### Wave height color scale
 

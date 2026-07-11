@@ -434,6 +434,10 @@ h1 {
   min-height: 30px;
 }
 
+.safe-range-input {
+  touch-action: pan-y;
+}
+
 .source-enabled-control {
   display: flex !important;
   align-items: center;
