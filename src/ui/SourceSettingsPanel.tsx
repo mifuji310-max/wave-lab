@@ -1,4 +1,5 @@
 import type { ContinuousSourceConfig } from "../simulation/types";
+import { calculateWaveTiming } from "../physics/waveParameters";
 import { SafeRangeInput } from "./SafeRangeInput";
 
 interface SourceSettingsPanelProps {
@@ -6,6 +7,7 @@ interface SourceSettingsPanelProps {
   columns: number;
   rows: number;
   visibleInsetCells: number;
+  waveSpeedCellsPerSecond: number;
   onChange: (source: ContinuousSourceConfig) => void;
   onDelete: (sourceId: string) => void;
   onClose: () => void;
@@ -16,6 +18,7 @@ export function SourceSettingsPanel({
   columns,
   rows,
   visibleInsetCells,
+  waveSpeedCellsPerSecond,
   onChange,
   onDelete,
   onClose,
@@ -23,6 +26,10 @@ export function SourceSettingsPanel({
   const phaseDegrees = Math.round((source.phaseRadians * 180) / Math.PI);
   const positionMarginCells = 6;
   const minimumPosition = visibleInsetCells + positionMarginCells;
+  const waveTiming = calculateWaveTiming(
+    source.wavelengthCells,
+    waveSpeedCellsPerSecond,
+  );
 
   return (
     <aside className="source-settings-panel" aria-label="連続波源の設定">
@@ -94,6 +101,20 @@ export function SourceSettingsPanel({
           <span>この波源を使う</span>
         </label>
       </div>
+
+      <section className="source-timing-readout" aria-label="波長から計算した波の時間情報">
+        <p>
+          <span>周期（ゆれ1回）</span>
+          <strong>{waveTiming.periodSeconds.toFixed(1)} シミュレーション秒</strong>
+        </p>
+        <p>
+          <span>1秒あたりのゆれ</span>
+          <strong>{waveTiming.frequencyHertz.toFixed(3)} 回</strong>
+        </p>
+        <small>
+          この実験の波の速さ: {waveSpeedCellsPerSecond.toFixed(1)} セル/シミュレーション秒。速さ = 周波数 × 波長
+        </small>
+      </section>
 
       <button type="button" className="danger-control" onClick={() => onDelete(source.id)}>
         この波源を削除

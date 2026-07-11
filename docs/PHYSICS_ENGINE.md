@@ -151,6 +151,10 @@ The internal solver may use normalized units. The UI may show educational units 
 
 Never present arbitrary grid cells as centimeters without an explicit scale.
 
+For the normalized simulation values shown in the source panel,
+`v = fλ`: period is `λ / v` and frequency is `v / λ`. These are labeled as
+simulation seconds and cycles per simulation second, not real-world SI values.
+
 ## 8. Validation suite
 
 Minimum validation cases:

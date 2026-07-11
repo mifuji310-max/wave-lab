@@ -1,7 +1,7 @@
 {
   "name": "wave-lab",
   "private": true,
-  "version": "0.1.0-prototype.9",
+  "version": "0.1.0-prototype.10",
   "type": "module",
   "scripts": {
     "dev": "vite",
