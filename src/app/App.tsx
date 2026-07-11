@@ -119,6 +119,12 @@ export function App() {
     setSimulationStatus("ready");
   };
 
+  const handleBoundaryReset = () => {
+    boundaryCellsReference.current = new Map();
+    setBoundaryCells([]);
+    controllerReference.current?.setBoundaries([]);
+  };
+
   const handleStep = () => {
     controllerReference.current?.step();
     setSimulationStatus("paused");
@@ -320,7 +326,7 @@ export function App() {
   const selectedSource = continuousSources.find((source) => source.id === selectedSourceId);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${selectedSource === undefined ? "" : "source-settings-open"}`}>
       <header className="app-header">
         <div>
           <p className="eyebrow">実験して理解する</p>
@@ -354,9 +360,15 @@ export function App() {
             onFieldTap={handleFieldTap}
             onBoundaryStroke={handleBoundaryStroke}
           />
-          <div className="color-legend" aria-label="波の高さの色の説明">
+          <div
+            className="color-legend"
+            aria-label="青は低い変位、薄い灰色は基準の0、赤は高い変位"
+          >
             <span>低い</span>
-            <span className="legend-gradient" aria-hidden="true" />
+            <span className="legend-scale">
+              <span className="legend-gradient" aria-hidden="true" />
+              <small>基準 0</small>
+            </span>
             <span>高い</span>
           </div>
         </div>
@@ -442,6 +454,9 @@ export function App() {
                 onClick={() => setInteractionMode("erase")}
               >
                 壁を消す
+              </button>
+              <button type="button" onClick={handleBoundaryReset} disabled={boundaryCells.length === 0}>
+                壁を全消去
               </button>
             </>
           ) : null}
@@ -563,7 +578,7 @@ function createPrototypeConfig(): SolverConfig {
     cellSize: 1,
     timeStepSeconds: 0.5,
     dampingPerSecond: 0.005,
-    absorptionLayerCells: Math.max(16, Math.round(minimumDimension * 0.1)),
-    absorptionMaxDampingPerSecond: 1.2,
+    absorptionLayerCells: Math.max(24, Math.round(minimumDimension * 0.18)),
+    absorptionMaxDampingPerSecond: 1.5,
   };
 }

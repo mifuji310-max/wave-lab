@@ -146,11 +146,66 @@ export function stepSolver(
     }
   }
 
+  applyMurAbsorbingBoundary(state, config, courantNumber);
+
   const previous = state.previous;
   state.previous = state.current;
   state.current = state.next;
   state.next = previous;
   state.simulationTimeSeconds += config.timeStepSeconds;
+}
+
+function applyMurAbsorbingBoundary(
+  state: SolverState,
+  config: SolverConfig,
+  courantNumber: number,
+): void {
+  const coefficient = (courantNumber - 1) / (courantNumber + 1);
+  const lastColumn = config.columns - 1;
+  const lastRow = config.rows - 1;
+
+  for (let row = 1; row < lastRow; row += 1) {
+    const leftEdge = toIndex(config, 0, row);
+    const leftNeighbor = toIndex(config, 1, row);
+    state.next[leftEdge] =
+      state.current[leftNeighbor] +
+      coefficient * (state.next[leftNeighbor] - state.current[leftEdge]);
+
+    const rightEdge = toIndex(config, lastColumn, row);
+    const rightNeighbor = toIndex(config, lastColumn - 1, row);
+    state.next[rightEdge] =
+      state.current[rightNeighbor] +
+      coefficient * (state.next[rightNeighbor] - state.current[rightEdge]);
+  }
+
+  for (let column = 1; column < lastColumn; column += 1) {
+    const topEdge = toIndex(config, column, 0);
+    const topNeighbor = toIndex(config, column, 1);
+    state.next[topEdge] =
+      state.current[topNeighbor] +
+      coefficient * (state.next[topNeighbor] - state.current[topEdge]);
+
+    const bottomEdge = toIndex(config, column, lastRow);
+    const bottomNeighbor = toIndex(config, column, lastRow - 1);
+    state.next[bottomEdge] =
+      state.current[bottomNeighbor] +
+      coefficient * (state.next[bottomNeighbor] - state.current[bottomEdge]);
+  }
+
+  state.next[toIndex(config, 0, 0)] =
+    (state.next[toIndex(config, 1, 0)] + state.next[toIndex(config, 0, 1)]) / 2;
+  state.next[toIndex(config, lastColumn, 0)] =
+    (state.next[toIndex(config, lastColumn - 1, 0)] +
+      state.next[toIndex(config, lastColumn, 1)]) /
+    2;
+  state.next[toIndex(config, 0, lastRow)] =
+    (state.next[toIndex(config, 1, lastRow)] +
+      state.next[toIndex(config, 0, lastRow - 1)]) /
+    2;
+  state.next[toIndex(config, lastColumn, lastRow)] =
+    (state.next[toIndex(config, lastColumn - 1, lastRow)] +
+      state.next[toIndex(config, lastColumn, lastRow - 1)]) /
+    2;
 }
 
 export function calculateDampingPerSecond(

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { BoundaryCell } from "../physics/solver";
 import type { SimulationFrame } from "../simulation/SimulationController";
 import type { ContinuousSourceConfig } from "../simulation/types";
+import { colorForDisplacement, monochromeForDisplacement } from "./colorScale";
 
 type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
 
@@ -66,26 +67,7 @@ export function WaveCanvas({
       context.fillRect(cell.column, cell.row, 1, 1);
     }
 
-    for (const source of continuousSources) {
-      context.beginPath();
-      context.arc(source.column + 0.5, source.row + 0.5, 4, 0, Math.PI * 2);
-      context.fillStyle = "#22d3ee";
-      context.fill();
-      context.lineWidth = 1.5;
-      context.strokeStyle = "#083344";
-      context.stroke();
-    }
-
-    if (observer !== undefined) {
-      context.beginPath();
-      context.arc(observer.column + 0.5, observer.row + 0.5, 4, 0, Math.PI * 2);
-      context.fillStyle = "#facc15";
-      context.fill();
-      context.lineWidth = 1.5;
-      context.strokeStyle = "#0f172a";
-      context.stroke();
-    }
-  }, [boundaryCells, continuousSources, displayMode, frame, observer]);
+  }, [boundaryCells, displayMode, frame]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const cell = cellFromPointer(event, frame);
@@ -141,16 +123,46 @@ export function WaveCanvas({
 
   return (
     <div className="wave-canvas-viewport">
-      <canvas
-        ref={canvasReference}
-        className="wave-canvas"
+      <div
+        className="wave-field-layer"
         style={{ aspectRatio: frame === undefined ? "4 / 5" : `${frame.columns} / ${frame.rows}` }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        aria-label={fieldLabel(interactionMode)}
-      />
+      >
+        <canvas
+          ref={canvasReference}
+          className="wave-canvas"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          aria-label={fieldLabel(interactionMode)}
+        />
+        {frame === undefined ? null : (
+          <svg
+            className="field-marker-overlay"
+            viewBox={`0 0 ${frame.columns} ${frame.rows}`}
+            aria-hidden="true"
+          >
+            {continuousSources.map((source) => (
+              <g
+                key={source.id}
+                className={`source-marker ${source.enabled ? "" : "disabled"}`}
+                transform={`translate(${source.column + 0.5} ${source.row + 0.5})`}
+              >
+                <circle className="source-marker-halo" r="5.25" />
+                <circle className="source-marker-body" r="3.75" />
+                <circle className="source-marker-core" r="1.35" />
+                <path className="source-marker-cross" d="M -6 0 H -4.5 M 4.5 0 H 6 M 0 -6 V -4.5 M 0 4.5 V 6" />
+              </g>
+            ))}
+            {observer === undefined ? null : (
+              <g transform={`translate(${observer.column + 0.5} ${observer.row + 0.5})`}>
+                <circle className="observer-marker" r="4" />
+                <path className="observer-marker-cross" d="M -5.5 0 H 5.5 M 0 -5.5 V 5.5" />
+              </g>
+            )}
+          </svg>
+        )}
+      </div>
     </div>
   );
 }
@@ -241,30 +253,4 @@ function fieldLabel(mode: InteractionMode): string {
     case "erase":
       return "波の実験フィールド。ドラッグして壁を消します。";
   }
-}
-
-function colorForDisplacement(displacement: number): { red: number; green: number; blue: number } {
-  const normalized = Math.max(-1, Math.min(1, displacement * 0.7));
-
-  if (normalized >= 0) {
-    return {
-      red: 247,
-      green: Math.round(247 - normalized * 117),
-      blue: Math.round(247 - normalized * 174),
-    };
-  }
-
-  const magnitude = Math.abs(normalized);
-  return {
-    red: Math.round(247 - magnitude * 176),
-    green: Math.round(247 - magnitude * 107),
-    blue: 255,
-  };
-}
-
-function monochromeForDisplacement(displacement: number): { red: number; green: number; blue: number } {
-  const normalized = Math.max(-1, Math.min(1, displacement * 0.7));
-  const lightness = Math.round(180 + normalized * 68);
-
-  return { red: lightness, green: lightness, blue: lightness };
 }

@@ -52,4 +52,35 @@ describe("solver", () => {
 
     expect(state.current[12 * stableConfig.columns + 12]).toBe(0);
   });
+
+  it("lets outgoing displacement enter the absorbing outer boundary", () => {
+    const state = createSolverState(stableConfig);
+    const edgeNeighborIndex = 12 * stableConfig.columns + 1;
+    const edgeIndex = 12 * stableConfig.columns;
+    state.previous[edgeNeighborIndex] = 1;
+    state.current[edgeNeighborIndex] = 1;
+
+    stepSolver(state, stableConfig);
+
+    expect(state.current[edgeIndex]).not.toBe(0);
+  });
+
+  it("removes a pulse after it leaves the simulated field", () => {
+    const absorptionConfig: SolverConfig = {
+      ...stableConfig,
+      absorptionLayerCells: 5,
+      absorptionMaxDampingPerSecond: 1.5,
+    };
+    const state = createSolverState(absorptionConfig);
+    const sourceTerm = new Float32Array(absorptionConfig.columns * absorptionConfig.rows);
+    sourceTerm[12 * absorptionConfig.columns + 12] = 1;
+    stepSolver(state, absorptionConfig, sourceTerm);
+
+    for (let step = 0; step < 300; step += 1) {
+      stepSolver(state, absorptionConfig);
+    }
+
+    const remainingPeak = Math.max(...state.current.map((value) => Math.abs(value)));
+    expect(remainingPeak).toBeLessThan(0.005);
+  });
 });
