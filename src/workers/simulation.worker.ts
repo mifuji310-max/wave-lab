@@ -11,6 +11,7 @@ import {
 import { addGaussianSourceTerm, rickerWavelet } from "../physics/sources";
 import { workerProtocolVersion, type WorkerCommand, type WorkerEvent } from "./protocol";
 import type { ContinuousSourceConfig } from "../simulation/types";
+import { scheduleSimulationSteps } from "./timing";
 
 let config: SolverConfig | undefined;
 let state: SolverState | undefined;
@@ -20,6 +21,8 @@ let continuousSources: ContinuousSourceConfig[] = [];
 let observer: { column: number; row: number } | undefined;
 let simulationStepCount = 0;
 let playbackSpeed: 0.25 | 0.5 | 1 | 2 = 1;
+let lastLoopTickAt = performance.now();
+let accumulatedSteps = 0;
 let performanceWindowStartedAt = performance.now();
 let performanceWindowStepCount = 0;
 let sourceTerm: Float32Array | undefined;
@@ -65,7 +68,6 @@ function handleCommand(command: WorkerCommand): void {
       continuousSourceEnabled = false;
       continuousSources = [];
       observer = undefined;
-      activePulses = [];
       simulationStepCount = 0;
       playbackSpeed = 1;
       resetPerformanceWindow();
@@ -84,12 +86,15 @@ function handleCommand(command: WorkerCommand): void {
       stepAndEmit();
       return;
     case "RESET":
+      stopLoop();
       resetSolverState(requireState());
       setFixedBoundaryCells(requireState(), requireConfig(), []);
       continuousSourceEnabled = false;
       continuousSources = [];
       observer = undefined;
+      activePulses = [];
       simulationStepCount = 0;
+      resetPerformanceWindow();
       emitFrame();
       return;
     case "SET_CONTINUOUS_SOURCE":
@@ -100,11 +105,8 @@ function handleCommand(command: WorkerCommand): void {
       return;
     case "SET_SPEED":
       playbackSpeed = command.multiplier;
-
-      if (timerId !== undefined) {
-        stopLoop();
-        startLoop();
-      }
+      accumulatedSteps = 0;
+      lastLoopTickAt = performance.now();
       return;
     case "SET_OBSERVER":
       observer = {
@@ -138,7 +140,9 @@ function startLoop(): void {
     return;
   }
 
-  timerId = self.setInterval(stepAndEmit, 16 / playbackSpeed);
+  accumulatedSteps = 0;
+  lastLoopTickAt = performance.now();
+  timerId = self.setInterval(runScheduledSteps, 16);
 }
 
 function stopLoop(): void {
@@ -146,9 +150,39 @@ function stopLoop(): void {
     self.clearInterval(timerId);
     timerId = undefined;
   }
+
+  accumulatedSteps = 0;
 }
 
 function stepAndEmit(): void {
+  advanceSimulationStep();
+  emitFrame();
+  emitPerformanceIfReady(requireConfig());
+}
+
+function runScheduledSteps(): void {
+  const now = performance.now();
+  const schedule = scheduleSimulationSteps(
+    accumulatedSteps,
+    now - lastLoopTickAt,
+    playbackSpeed,
+  );
+  lastLoopTickAt = now;
+  accumulatedSteps = schedule.remainingAccumulator;
+
+  if (schedule.steps === 0) {
+    return;
+  }
+
+  for (let step = 0; step < schedule.steps; step += 1) {
+    advanceSimulationStep();
+  }
+
+  emitFrame();
+  emitPerformanceIfReady(requireConfig());
+}
+
+function advanceSimulationStep(): void {
   const currentState = requireState();
   const currentConfig = requireConfig();
   const currentSourceTerm = requireSourceTerm();
@@ -160,8 +194,8 @@ function stepAndEmit(): void {
         continue;
       }
 
-      // In normalized units c = 1 cell/s, so angular frequency is 2π/λ.
-      const sourceAngularFrequency = (2 * Math.PI) / source.wavelengthCells;
+      const sourceAngularFrequency =
+        (2 * Math.PI * currentConfig.waveSpeedCellsPerSecond) / source.wavelengthCells;
       const sourceAmplitude =
         Math.sin(currentState.simulationTimeSeconds * sourceAngularFrequency + source.phaseRadians) *
         source.amplitude;
@@ -193,9 +227,6 @@ function stepAndEmit(): void {
   stepSolver(currentState, currentConfig, currentSourceTerm);
   simulationStepCount += 1;
   performanceWindowStepCount += 1;
-  emitFrame();
-
-  emitPerformanceIfReady(currentConfig);
 
   if (simulationStepCount % 3 === 0) {
     emitObservationSample();

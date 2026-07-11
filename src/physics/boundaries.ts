@@ -9,12 +9,12 @@ export function createSingleSlitBoundaryCells(
 ): BoundaryCell[] {
   const cells: BoundaryCell[] = [];
   const barrierThicknessCells = 2;
-  const openingHalfHeightCells = Math.max(1, Math.round(openingWidthCells / 2));
-  const openingStartRow = openingCenterRow - openingHalfHeightCells;
-  const openingEndRow = openingCenterRow + openingHalfHeightCells;
+  const normalizedOpeningWidth = Math.max(1, Math.round(openingWidthCells));
+  const openingStartRow = openingCenterRow - Math.floor(normalizedOpeningWidth / 2);
+  const openingEndRow = openingStartRow + normalizedOpeningWidth;
 
   for (let row = 1; row < rows - 1; row += 1) {
-    if (row >= openingStartRow && row <= openingEndRow) {
+    if (row >= openingStartRow && row < openingEndRow) {
       continue;
     }
 

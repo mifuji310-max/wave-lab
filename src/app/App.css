@@ -229,7 +229,7 @@ h1 {
   position: absolute;
   z-index: 2;
   right: 12px;
-  bottom: 122px;
+  bottom: 168px;
   left: 12px;
   display: grid;
   grid-template-columns: auto minmax(60px, 220px) auto;

@@ -17,4 +17,16 @@ describe("single slit boundary", () => {
     expect(wideCells.length).toBeLessThan(narrowCells.length);
     expect(wideCells.some((cell) => cell.column === 41 && cell.row === 10)).toBe(true);
   });
+
+  it("creates exactly the requested number of open rows", () => {
+    const cells = createSingleSlitBoundaryCells(80, 80, 40, 40, 24);
+    const blockedRows = new Set(
+      cells.filter((cell) => cell.column === 40).map((cell) => cell.row),
+    );
+    const openInteriorRows = Array.from({ length: 78 }, (_, index) => index + 1).filter(
+      (row) => !blockedRows.has(row),
+    );
+
+    expect(openInteriorRows).toHaveLength(24);
+  });
 });
