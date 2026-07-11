@@ -75,6 +75,7 @@ The current prototype includes:
 12. Touch-safe source parameter sliders for scrollable mobile settings
 13. Selection-safe interference presets and a compact two-row mobile tool dock
 14. Source-panel period and frequency readouts in normalized simulation units
+15. A one-tap experiment gallery for pulse spread, interference, reflection, and single-slit diffraction
 
 The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 

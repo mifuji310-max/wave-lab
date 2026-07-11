@@ -359,6 +359,75 @@ h1 {
   background: rgb(20 83 45 / 97%);
 }
 
+.experiment-gallery {
+  position: fixed;
+  z-index: 13;
+  right: 8px;
+  bottom: 112px;
+  left: 8px;
+  max-height: min(62dvh, 520px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #c084fc;
+  border-radius: 16px 16px 0 0;
+  background: rgb(46 16 101 / 97%);
+}
+
+.experiment-gallery header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.experiment-gallery header div {
+  display: grid;
+  gap: 2px;
+}
+
+.experiment-gallery header span {
+  color: #e9d5ff;
+  font-size: 0.72rem;
+}
+
+.experiment-gallery header button {
+  min-height: 38px;
+}
+
+.experiment-preset-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.experiment-preset-card {
+  display: grid;
+  min-height: 116px;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border-color: #c4b5fd;
+  background: rgb(30 41 59 / 78%);
+  text-align: left;
+}
+
+.experiment-preset-card strong {
+  color: #f5f3ff;
+}
+
+.experiment-preset-card span {
+  color: #ddd6fe;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.experiment-preset-card small {
+  color: #a5f3fc;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
 .diagnostics-panel header {
   display: flex;
   justify-content: space-between;
@@ -640,6 +709,15 @@ h1 {
     width: min(420px, 48vw);
     max-height: none;
   }
+
+  .experiment-gallery {
+    top: 8px;
+    right: 8px;
+    bottom: 112px;
+    left: auto;
+    width: min(460px, 54vw);
+    max-height: none;
+  }
 }
 
 @media (max-width: 560px) {
@@ -676,7 +754,8 @@ h1 {
   }
 
   .observation-panel,
-  .diagnostics-panel {
+  .diagnostics-panel,
+  .experiment-gallery {
     bottom: 168px;
   }
 
@@ -690,7 +769,8 @@ h1 {
 
   .source-settings-grid,
   .diagnostics-grid,
-  .source-timing-readout {
+  .source-timing-readout,
+  .experiment-preset-list {
     grid-template-columns: 1fr;
   }
 }

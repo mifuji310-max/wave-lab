@@ -6,6 +6,21 @@ Lessons use a predict–experiment–observe–explain cycle.
 
 The app should avoid presenting the explanation before the learner has made a prediction.
 
+## Prepared experiment presets
+
+The free-experiment screen offers four prepared starting points: pulse spread,
+two-source interference, wall reflection, and single-slit diffraction. Each
+card states one observation goal and one short prompt. Selecting a card resets
+the current experiment and runs the same solver-driven setup every time.
+
+- **Pulse spread:** Compare the spreading disturbance with motion at one place.
+- **Two-source interference:** Find regions where coherent waves strengthen or weaken.
+- **Wall reflection:** Compare the direction of the pulse before and after it reaches an idealized fixed wall.
+- **Single-slit diffraction:** Compare wave spread before and after a narrow opening.
+
+The diffraction preset approximates a line source with several coherent point
+sources because the prototype does not yet expose a separate line-source editor.
+
 ## Lesson 1 — What is a wave?
 
 ### Objective

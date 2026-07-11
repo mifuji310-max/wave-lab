@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  createExperimentPreset,
+  experimentPresets,
+  type ExperimentPresetId,
+} from "../experiments/presets";
 import { ObservationPanel } from "../observation/ObservationPanel";
 import { createSingleSlitBoundaryCells } from "../physics/boundaries";
 import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
 import { appVersion } from "../shared/version";
 import { DiagnosticsPanel, type ViewportDiagnostic } from "../ui/DiagnosticsPanel";
+import { ExperimentGallery } from "../ui/ExperimentGallery";
 import { SourceSettingsPanel } from "../ui/SourceSettingsPanel";
 import {
   SimulationController,
@@ -63,6 +69,7 @@ export function App() {
   const [renderFramesPerSecond, setRenderFramesPerSecond] = useState<number>();
   const [fieldHintVisible, setFieldHintVisible] = useState(true);
   const [fieldHintRevision, setFieldHintRevision] = useState(0);
+  const [experimentGalleryOpen, setExperimentGalleryOpen] = useState(false);
 
   useEffect(() => {
     const controller = new SimulationController(solverConfig, {
@@ -153,6 +160,7 @@ export function App() {
     setObservationPanelOpen(false);
     setPerformanceMeasurement(undefined);
     setRenderFramesPerSecond(undefined);
+    setExperimentGalleryOpen(false);
     setInteractionMode("pulse");
     setSimulationStatus("ready");
   };
@@ -295,42 +303,57 @@ export function App() {
     }
   };
 
-  const createTwoSourceExperiment = () => {
+  const openExperimentGallery = () => {
+    setSelectedSourceId(undefined);
+    setObservationPanelOpen(false);
+    setExperimentGalleryOpen(true);
+  };
+
+  const applyExperimentPreset = (presetId: ExperimentPresetId) => {
     if (gridSize === undefined) {
       return;
     }
 
-    const row = Math.round(gridSize.rows * 0.5);
-    const wavelengthCells = 24;
-    const nextSources: ContinuousSourceConfig[] = [
-      {
-        id: `source-${sourceIdReference.current++}`,
-        column: Math.round(gridSize.columns * 0.4),
-        row,
-        amplitude: 0.8,
-        wavelengthCells,
-        phaseRadians: 0,
-        enabled: true,
-      },
-      {
-        id: `source-${sourceIdReference.current++}`,
-        column: Math.round(gridSize.columns * 0.6),
-        row,
-        amplitude: 0.8,
-        wavelengthCells,
-        phaseRadians: 0,
-        enabled: true,
-      },
-    ];
+    const preset = createExperimentPreset(presetId, {
+      columns: gridSize.columns,
+      rows: gridSize.rows,
+      visibleInsetCells: solverConfig.absorptionLayerCells,
+    });
 
-    setContinuousSources(nextSources);
+    controllerReference.current?.reset();
+    boundaryCellsReference.current = new Map(
+      preset.boundaryCells.map((cell) => [`${cell.column}:${cell.row}`, cell]),
+    );
+    setBoundaryCells(preset.boundaryCells);
+    setContinuousSources(preset.sources);
     setSelectedSourceId(undefined);
-    setContinuousSourceEnabled(true);
-    controllerReference.current?.setContinuousSources(nextSources);
-    controllerReference.current?.setContinuousSource(true);
+    setContinuousSourceEnabled(preset.sources.length > 0);
+    setObserver(undefined);
+    pendingObservationSamplesReference.current = [];
+    setObservationSamples([]);
+    setObservationPanelOpen(false);
+    setPerformanceMeasurement(undefined);
+    setRenderFramesPerSecond(undefined);
+    setPlaybackSpeed(1);
+    setExperimentGalleryOpen(false);
+    setInteractionMode(preset.interactionMode);
+    setFieldHintRevision((revision) => revision + 1);
+
+    controllerReference.current?.setBoundaries(preset.boundaryCells);
+    controllerReference.current?.setContinuousSources(preset.sources);
+    controllerReference.current?.setContinuousSource(preset.sources.length > 0);
+    controllerReference.current?.setSpeed(1);
+
+    if (preset.pulse !== undefined) {
+      controllerReference.current?.injectPulse(
+        preset.pulse.column,
+        preset.pulse.row,
+        preset.pulse.amplitude,
+      );
+    }
+
     controllerReference.current?.start();
     setSimulationStatus("running");
-    setInteractionMode("sourceSelect");
   };
 
   const cycleSlitWidth = () => {
@@ -466,15 +489,15 @@ export function App() {
         <div className="tool-options">
           {toolCategory === "experiment" ? (
             <>
+              <button type="button" className="primary-control" onClick={openExperimentGallery} disabled={controlsDisabled}>
+                実験を選ぶ
+              </button>
               <button
                 type="button"
                 className={interactionMode === "pulse" ? "active-control" : ""}
                 onClick={() => setInteractionMode("pulse")}
               >
-                パルス実験
-              </button>
-              <button type="button" onClick={createTwoSourceExperiment} disabled={controlsDisabled}>
-                二波源干渉
+                自由にパルス
               </button>
               <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
                 {continuousSources.length === 0
@@ -606,6 +629,12 @@ export function App() {
         performanceMeasurement={performanceMeasurement}
         renderFramesPerSecond={renderFramesPerSecond}
         onClose={() => setDiagnosticsOpen(false)}
+      />
+      <ExperimentGallery
+        open={experimentGalleryOpen}
+        presets={experimentPresets}
+        onSelect={applyExperimentPreset}
+        onClose={() => setExperimentGalleryOpen(false)}
       />
       {errorMessage === undefined ? null : <p className="error-message">{errorMessage}</p>}
     </main>
