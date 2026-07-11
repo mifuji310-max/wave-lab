@@ -4,6 +4,8 @@ import { createSingleSlitBoundaryCells } from "../physics/boundaries";
 import type { BoundaryCell, SolverConfig } from "../physics/solver";
 import { WaveCanvas } from "../renderer/WaveCanvas";
 import { appVersion } from "../shared/version";
+import { DiagnosticsPanel, type ViewportDiagnostic } from "../ui/DiagnosticsPanel";
+import { SourceSettingsPanel } from "../ui/SourceSettingsPanel";
 import {
   SimulationController,
   type ObservationSample,
@@ -14,6 +16,7 @@ import type { ContinuousSourceConfig } from "../simulation/types";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
 type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
+type ToolCategory = "experiment" | "placement" | "playback" | "display";
 
 const statusLabels: Record<SimulationStatus, string> = {
   loading: "計算を準備中",
@@ -23,12 +26,11 @@ const statusLabels: Record<SimulationStatus, string> = {
   error: "計算エラー",
 };
 
-const prototypeConfig = createPrototypeConfig();
-
 export function App() {
   const controllerReference = useRef<SimulationController | null>(null);
   const boundaryCellsReference = useRef<Map<string, BoundaryCell>>(new Map());
   const sourceIdReference = useRef(1);
+  const renderMeasurementReference = useRef({ startedAt: performance.now(), frames: 0 });
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>("loading");
   const [frame, setFrame] = useState<SimulationFrame>();
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -42,11 +44,29 @@ export function App() {
   const [performanceMeasurement, setPerformanceMeasurement] = useState<PerformanceMeasurement>();
   const [boundaryCells, setBoundaryCells] = useState<BoundaryCell[]>([]);
   const [continuousSources, setContinuousSources] = useState<ContinuousSourceConfig[]>([]);
+  const [selectedSourceId, setSelectedSourceId] = useState<string>();
+  const [slitWidthCells, setSlitWidthCells] = useState(24);
+  const [toolCategory, setToolCategory] = useState<ToolCategory>("experiment");
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [viewportDiagnostic, setViewportDiagnostic] = useState(readViewportDiagnostic);
+  const [renderFramesPerSecond, setRenderFramesPerSecond] = useState<number>();
 
   useEffect(() => {
-    const controller = new SimulationController(prototypeConfig, {
+    const controller = new SimulationController(createPrototypeConfig(), {
       onReady: () => setSimulationStatus("ready"),
-      onFrame: setFrame,
+      onFrame: (nextFrame) => {
+        setFrame(nextFrame);
+        const measurement = renderMeasurementReference.current;
+        measurement.frames += 1;
+        const now = performance.now();
+
+        if (now - measurement.startedAt >= 1000) {
+          setRenderFramesPerSecond(
+            Math.round((measurement.frames * 1000) / (now - measurement.startedAt)),
+          );
+          renderMeasurementReference.current = { startedAt: now, frames: 0 };
+        }
+      },
       onObservationSample: (sample) => {
         setObservationSamples((samples) => [...samples.slice(-179), sample]);
       },
@@ -61,6 +81,17 @@ export function App() {
     return () => {
       controller.dispose();
       controllerReference.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateViewportDiagnostic = () => setViewportDiagnostic(readViewportDiagnostic());
+    window.addEventListener("resize", updateViewportDiagnostic);
+    window.addEventListener("orientationchange", updateViewportDiagnostic);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportDiagnostic);
+      window.removeEventListener("orientationchange", updateViewportDiagnostic);
     };
   }, []);
 
@@ -80,6 +111,7 @@ export function App() {
     boundaryCellsReference.current = new Map();
     setBoundaryCells([]);
     setContinuousSources([]);
+    setSelectedSourceId(undefined);
     setContinuousSourceEnabled(false);
     setObserver(undefined);
     setObservationSamples([]);
@@ -118,7 +150,7 @@ export function App() {
     }
 
     if (interactionMode === "source") {
-      updateContinuousSources(column, row);
+      selectOrCreateContinuousSource(column, row);
       return;
     }
 
@@ -128,13 +160,13 @@ export function App() {
       }
 
       updateBoundaries(
-        createSingleSlitBoundaryCells(frame.columns, frame.rows, column, row),
+        createSingleSlitBoundaryCells(frame.columns, frame.rows, column, row, slitWidthCells),
         false,
       );
       return;
     }
 
-    controllerReference.current?.injectPulse(column, row, 1.4);
+    controllerReference.current?.injectPulse(column, row, 4);
 
     if (simulationStatus !== "running") {
       controllerReference.current?.start();
@@ -146,33 +178,32 @@ export function App() {
     updateBoundaries(cells, erase);
   };
 
-  const updateContinuousSources = (column: number, row: number) => {
+  const selectOrCreateContinuousSource = (column: number, row: number) => {
     const existingSource = continuousSources.find(
       (source) => Math.hypot(source.column - column, source.row - row) <= 8,
     );
-    const nextSources =
-      existingSource === undefined
-        ? [
-            ...continuousSources,
-            {
-              id: `source-${sourceIdReference.current++}`,
-              column,
-              row,
-              amplitude: 0.12,
-              wavelengthCells: 24,
-              phaseRadians: 0,
-            },
-          ]
-        : continuousSources.filter((source) => source.id !== existingSource.id);
 
-    setContinuousSources(nextSources);
-    controllerReference.current?.setContinuousSources(nextSources);
-
-    if (nextSources.length === 0) {
-      setContinuousSourceEnabled(false);
-      controllerReference.current?.setContinuousSource(false);
+    if (existingSource !== undefined) {
+      setSelectedSourceId(existingSource.id);
+      setObservationPanelOpen(false);
       return;
     }
+
+    const newSource: ContinuousSourceConfig = {
+      id: `source-${sourceIdReference.current++}`,
+      column,
+      row,
+      amplitude: 0.8,
+      wavelengthCells: 24,
+      phaseRadians: 0,
+      enabled: true,
+    };
+    const nextSources = [...continuousSources, newSource];
+
+    setContinuousSources(nextSources);
+    setSelectedSourceId(newSource.id);
+    setObservationPanelOpen(false);
+    controllerReference.current?.setContinuousSources(nextSources);
 
     if (!continuousSourceEnabled) {
       setContinuousSourceEnabled(true);
@@ -183,6 +214,70 @@ export function App() {
       controllerReference.current?.start();
       setSimulationStatus("running");
     }
+  };
+
+  const updateContinuousSource = (updatedSource: ContinuousSourceConfig) => {
+    const nextSources = continuousSources.map((source) =>
+      source.id === updatedSource.id ? updatedSource : source,
+    );
+    setContinuousSources(nextSources);
+    controllerReference.current?.setContinuousSources(nextSources);
+  };
+
+  const deleteContinuousSource = (sourceId: string) => {
+    const nextSources = continuousSources.filter((source) => source.id !== sourceId);
+    setContinuousSources(nextSources);
+    setSelectedSourceId(undefined);
+    controllerReference.current?.setContinuousSources(nextSources);
+
+    if (nextSources.length === 0) {
+      setContinuousSourceEnabled(false);
+      controllerReference.current?.setContinuousSource(false);
+    }
+  };
+
+  const createTwoSourceExperiment = () => {
+    if (frame === undefined) {
+      return;
+    }
+
+    const row = Math.round(frame.rows * 0.5);
+    const wavelengthCells = 24;
+    const nextSources: ContinuousSourceConfig[] = [
+      {
+        id: `source-${sourceIdReference.current++}`,
+        column: Math.round(frame.columns * 0.4),
+        row,
+        amplitude: 0.8,
+        wavelengthCells,
+        phaseRadians: 0,
+        enabled: true,
+      },
+      {
+        id: `source-${sourceIdReference.current++}`,
+        column: Math.round(frame.columns * 0.6),
+        row,
+        amplitude: 0.8,
+        wavelengthCells,
+        phaseRadians: 0,
+        enabled: true,
+      },
+    ];
+
+    setContinuousSources(nextSources);
+    setSelectedSourceId(undefined);
+    setContinuousSourceEnabled(true);
+    controllerReference.current?.setContinuousSources(nextSources);
+    controllerReference.current?.setContinuousSource(true);
+    controllerReference.current?.start();
+    setSimulationStatus("running");
+    setInteractionMode("source");
+  };
+
+  const cycleSlitWidth = () => {
+    const widths = [12, 24, 36, 48];
+    const currentIndex = widths.indexOf(slitWidthCells);
+    setSlitWidthCells(widths[(currentIndex + 1) % widths.length]);
   };
 
   const updateBoundaries = (centers: BoundaryCell[], erase: boolean) => {
@@ -222,6 +317,7 @@ export function App() {
 
   const isRunning = simulationStatus === "running";
   const controlsDisabled = simulationStatus === "loading" || simulationStatus === "error";
+  const selectedSource = continuousSources.find((source) => source.id === selectedSourceId);
 
   return (
     <main className="app-shell">
@@ -273,68 +369,140 @@ export function App() {
         onToggle={() => setObservationPanelOpen((open) => !open)}
       />
 
-      <section className="control-panel" aria-label="シミュレーション操作">
-        <button
-          type="button"
-          className={interactionMode === "pulse" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("pulse")}
-        >
-          波を起こす
-        </button>
-        <button
-          type="button"
-          className={interactionMode === "observer" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("observer")}
-        >
-          観測点
-        </button>
-        <button
-          type="button"
-          className={interactionMode === "source" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("source")}
-        >
-          連続波源 ({continuousSources.length})
-        </button>
-        <button
-          type="button"
-          className={interactionMode === "wall" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("wall")}
-        >
-          壁を描く
-        </button>
-        <button
-          type="button"
-          className={interactionMode === "slit" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("slit")}
-        >
-          単スリット
-        </button>
-        <button
-          type="button"
-          className={interactionMode === "erase" ? "mode-control active-control" : "mode-control"}
-          onClick={() => setInteractionMode("erase")}
-        >
-          壁を消す
-        </button>
-        <button type="button" className="primary-control" onClick={handlePlayPause} disabled={controlsDisabled}>
-          {isRunning ? "一時停止" : "再生"}
-        </button>
-        <button type="button" onClick={handleReset} disabled={controlsDisabled}>
-          リセット
-        </button>
-        <button type="button" onClick={handleStep} disabled={controlsDisabled || isRunning}>
-          一歩進む
-        </button>
-        <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
-          連続波: {continuousSourceEnabled ? "ON" : "OFF"} ({continuousSources.length})
-        </button>
-        <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
-          速度: {playbackSpeed}×
-        </button>
-        <button type="button" onClick={() => setDisplayMode((mode) => (mode === "color" ? "monochrome" : "color"))}>
-          {displayMode === "color" ? "白黒表示" : "色表示"}
-        </button>
+      {selectedSource === undefined || frame === undefined ? null : (
+        <SourceSettingsPanel
+          source={selectedSource}
+          columns={frame.columns}
+          rows={frame.rows}
+          onChange={updateContinuousSource}
+          onDelete={deleteContinuousSource}
+          onClose={() => setSelectedSourceId(undefined)}
+        />
+      )}
+
+      <section className="tool-dock" aria-label="シミュレーション操作">
+        <div className="tool-options">
+          {toolCategory === "experiment" ? (
+            <>
+              <button
+                type="button"
+                className={interactionMode === "pulse" ? "active-control" : ""}
+                onClick={() => setInteractionMode("pulse")}
+              >
+                パルス実験
+              </button>
+              <button type="button" onClick={createTwoSourceExperiment} disabled={controlsDisabled}>
+                二波源干渉
+              </button>
+              <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
+                連続波: {continuousSourceEnabled ? "ON" : "OFF"} ({continuousSources.length})
+              </button>
+              <button type="button" onClick={handleReset} disabled={controlsDisabled}>
+                全リセット
+              </button>
+            </>
+          ) : null}
+
+          {toolCategory === "placement" ? (
+            <>
+              <button
+                type="button"
+                className={interactionMode === "source" ? "active-control" : ""}
+                onClick={() => setInteractionMode("source")}
+              >
+                波源 ({continuousSources.length})
+              </button>
+              <button
+                type="button"
+                className={interactionMode === "observer" ? "active-control" : ""}
+                onClick={() => setInteractionMode("observer")}
+              >
+                観測点
+              </button>
+              <button
+                type="button"
+                className={interactionMode === "wall" ? "active-control" : ""}
+                onClick={() => setInteractionMode("wall")}
+              >
+                壁を描く
+              </button>
+              <button
+                type="button"
+                className={interactionMode === "slit" ? "active-control" : ""}
+                onClick={() => setInteractionMode("slit")}
+              >
+                単スリット
+              </button>
+              <button type="button" onClick={cycleSlitWidth}>
+                スリット幅: {slitWidthCells}
+              </button>
+              <button
+                type="button"
+                className={interactionMode === "erase" ? "active-control" : ""}
+                onClick={() => setInteractionMode("erase")}
+              >
+                壁を消す
+              </button>
+            </>
+          ) : null}
+
+          {toolCategory === "playback" ? (
+            <>
+              <button type="button" className="primary-control" onClick={handlePlayPause} disabled={controlsDisabled}>
+                {isRunning ? "一時停止" : "再生"}
+              </button>
+              <button type="button" onClick={handleStep} disabled={controlsDisabled || isRunning}>
+                一歩進む
+              </button>
+              <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
+                速度: {playbackSpeed}×
+              </button>
+              <button type="button" onClick={handleReset} disabled={controlsDisabled}>
+                全リセット
+              </button>
+            </>
+          ) : null}
+
+          {toolCategory === "display" ? (
+            <>
+              <button type="button" onClick={() => setDisplayMode((mode) => (mode === "color" ? "monochrome" : "color"))}>
+                {displayMode === "color" ? "白黒表示" : "色表示"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setObservationPanelOpen((open) => !open)}
+                disabled={observer === undefined}
+              >
+                観測グラフ
+              </button>
+              <button type="button" onClick={() => setDiagnosticsOpen(true)}>
+                端末・性能
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        <nav className="tool-categories" aria-label="機能カテゴリ">
+          {(["experiment", "placement", "playback", "display"] as ToolCategory[]).map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={toolCategory === category ? "active-category" : ""}
+              onClick={() => setToolCategory(category)}
+            >
+              {toolCategoryLabel(category)}
+            </button>
+          ))}
+        </nav>
       </section>
+      <DiagnosticsPanel
+        open={diagnosticsOpen}
+        viewport={viewportDiagnostic}
+        frame={frame}
+        performanceMeasurement={performanceMeasurement}
+        renderFramesPerSecond={renderFramesPerSecond}
+        onClose={() => setDiagnosticsOpen(false)}
+      />
       {errorMessage === undefined ? null : <p className="error-message">{errorMessage}</p>}
     </main>
   );
@@ -347,13 +515,35 @@ function fieldTitleForMode(mode: InteractionMode): string {
     case "observer":
       return "タップして観測点を置く";
     case "source":
-      return "タップして連続波源を追加・削除";
+      return "タップして波源を追加・選択";
     case "wall":
       return "ドラッグして壁を描く";
     case "slit":
       return "タップして単スリットを置く";
     case "erase":
       return "ドラッグして壁を消す";
+  }
+}
+
+function readViewportDiagnostic(): ViewportDiagnostic {
+  return {
+    width: Math.round(window.innerWidth),
+    height: Math.round(window.innerHeight),
+    orientation: window.innerWidth >= window.innerHeight ? "landscape" : "portrait",
+    androidDetected: /Android/i.test(navigator.userAgent),
+  };
+}
+
+function toolCategoryLabel(category: ToolCategory): string {
+  switch (category) {
+    case "experiment":
+      return "実験";
+    case "placement":
+      return "配置";
+    case "playback":
+      return "再生";
+    case "display":
+      return "表示";
   }
 }
 

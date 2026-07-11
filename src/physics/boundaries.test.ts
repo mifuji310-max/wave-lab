@@ -9,4 +9,12 @@ describe("single slit boundary", () => {
     expect(cells.some((cell) => cell.column === 40 && cell.row === 10)).toBe(true);
     expect(cells.some((cell) => cell.column === 41 && cell.row === 10)).toBe(true);
   });
+
+  it("changes the opening size without changing the barrier thickness", () => {
+    const narrowCells = createSingleSlitBoundaryCells(80, 80, 40, 40, 12);
+    const wideCells = createSingleSlitBoundaryCells(80, 80, 40, 40, 36);
+
+    expect(wideCells.length).toBeLessThan(narrowCells.length);
+    expect(wideCells.some((cell) => cell.column === 41 && cell.row === 10)).toBe(true);
+  });
 });

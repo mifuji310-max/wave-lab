@@ -160,7 +160,7 @@ h1 {
   position: absolute;
   z-index: 2;
   right: 12px;
-  bottom: 76px;
+  bottom: 122px;
   left: 12px;
   display: grid;
   grid-template-columns: auto minmax(60px, 220px) auto;
@@ -179,25 +179,50 @@ h1 {
   background: linear-gradient(90deg, #478cff, #f7f7f7 50%, #f78249);
 }
 
-.control-panel {
+.tool-dock {
   position: fixed;
   z-index: 10;
   right: 0;
   bottom: 0;
   left: 0;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 8px 10px max(8px, env(safe-area-inset-bottom));
   border-top: 1px solid #334155;
   background: rgb(17 24 39 / 94%);
+}
+
+.tool-options {
+  display: flex;
+  gap: 8px;
+  min-height: 56px;
+  overflow-x: auto;
+  padding: 6px 10px;
   scrollbar-width: none;
 }
 
-.control-panel button {
+.tool-options button {
   flex: 0 0 auto;
   min-width: 104px;
   padding: 0 12px;
+}
+
+.tool-categories {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px 8px max(6px, env(safe-area-inset-bottom));
+  border-top: 1px solid #334155;
+}
+
+.tool-categories button {
+  min-height: 42px;
+  border-radius: 9px;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.tool-categories .active-category {
+  border-color: #38bdf8;
+  background: #0c4a6e;
+  color: #f0f9ff;
 }
 
 .primary-control {
@@ -215,7 +240,7 @@ h1 {
   position: fixed;
   z-index: 9;
   right: 8px;
-  bottom: 68px;
+  bottom: 112px;
   left: 8px;
   max-height: 48dvh;
   overflow: hidden;
@@ -224,6 +249,142 @@ h1 {
   background: rgb(15 23 42 / 96%);
   transform: translateY(calc(100% - 48px));
   transition: transform 180ms ease-out;
+}
+
+.source-settings-panel {
+  position: fixed;
+  z-index: 12;
+  right: 8px;
+  bottom: 112px;
+  left: 8px;
+  max-height: 58dvh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #0e7490;
+  border-radius: 16px 16px 0 0;
+  background: rgb(8 47 73 / 97%);
+}
+
+.diagnostics-panel {
+  position: fixed;
+  z-index: 13;
+  right: 8px;
+  bottom: 112px;
+  left: 8px;
+  max-height: 58dvh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #22c55e;
+  border-radius: 16px 16px 0 0;
+  background: rgb(20 83 45 / 97%);
+}
+
+.diagnostics-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.diagnostics-panel header div {
+  display: grid;
+  gap: 2px;
+}
+
+.diagnostics-panel header span,
+.diagnostics-note {
+  color: #bbf7d0;
+  font-size: 0.72rem;
+}
+
+.diagnostics-panel header button {
+  min-height: 38px;
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.diagnostics-grid div {
+  padding: 9px;
+  border-radius: 10px;
+  background: rgb(15 23 42 / 55%);
+}
+
+.diagnostics-grid dt {
+  color: #bbf7d0;
+  font-size: 0.7rem;
+}
+
+.diagnostics-grid dd {
+  margin: 3px 0 0;
+  font-weight: 700;
+}
+
+.diagnostics-note {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.source-settings-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.source-settings-panel header div {
+  display: grid;
+  gap: 2px;
+}
+
+.source-settings-panel header span {
+  color: #a5f3fc;
+  font-size: 0.72rem;
+}
+
+.source-settings-panel header button {
+  min-height: 38px;
+}
+
+.source-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.source-settings-grid label {
+  display: grid;
+  gap: 4px;
+  color: #ecfeff;
+  font-size: 0.78rem;
+}
+
+.source-settings-grid input[type="range"] {
+  width: 100%;
+  min-height: 30px;
+}
+
+.source-enabled-control {
+  display: flex !important;
+  align-items: center;
+}
+
+.source-enabled-control input {
+  width: 22px;
+  height: 22px;
+}
+
+.danger-control {
+  width: 100%;
+  margin-top: 12px;
+  border-color: #fca5a5;
+  background: #7f1d1d;
 }
 
 .observation-panel.open {
@@ -334,9 +495,34 @@ h1 {
   .observation-panel {
     top: 8px;
     right: 8px;
-    bottom: 68px;
+    bottom: 112px;
     left: auto;
     width: min(360px, 42vw);
     max-height: none;
+  }
+
+  .source-settings-panel {
+    top: 8px;
+    right: 8px;
+    bottom: 112px;
+    left: auto;
+    width: min(420px, 48vw);
+    max-height: none;
+  }
+
+  .diagnostics-panel {
+    top: 8px;
+    right: 8px;
+    bottom: 112px;
+    left: auto;
+    width: min(420px, 48vw);
+    max-height: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .source-settings-grid,
+  .diagnostics-grid {
+    grid-template-columns: 1fr;
   }
 }

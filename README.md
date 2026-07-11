@@ -62,13 +62,15 @@ Run `pnpm typecheck` for TypeScript validation, `pnpm test` for unit tests, and 
 The current prototype includes:
 
 1. Worker-based two-dimensional scalar FDTD simulation
-2. Tap pulses and multiple positioned continuous sources
+2. Finite-duration tap pulses and individually configurable continuous sources
 3. Color and monochrome Canvas 2D rendering
 4. Playback, step, reset, speed, and performance controls
 5. One observation point with a fixed-scale history graph
-6. Editable fixed walls and a single-slit experiment tool
+6. Editable fixed walls and an adjustable single-slit experiment tool
+7. A coherent two-source interference preset
+8. Grouped mobile controls and an on-screen Android/rotation performance diagnostic
 
-The next validation milestone is Android performance and device rotation testing.
+The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 
 ## Repository policy
 

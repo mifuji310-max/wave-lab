@@ -3,7 +3,6 @@ import {
   calculateCourantNumber,
   calculateDampingPerSecond,
   createSolverState,
-  injectBipolarPulse,
   setFixedBoundaryCells,
   stepSolver,
   type SolverConfig,
@@ -44,26 +43,12 @@ describe("solver", () => {
     expect([...state.current].every((value) => value === 0)).toBe(true);
   });
 
-  it("preserves symmetry for a centered bipolar pulse after one step", () => {
-    const state = createSolverState(stableConfig);
-    injectBipolarPulse(state, stableConfig, 12, 12, 1);
-    stepSolver(state, stableConfig);
-
-    const left = state.current[12 * stableConfig.columns + 11];
-    const right = state.current[12 * stableConfig.columns + 13];
-    const above = state.current[11 * stableConfig.columns + 12];
-    const below = state.current[13 * stableConfig.columns + 12];
-
-    expect(left).toBe(right);
-    expect(left).toBe(above);
-    expect(left).toBe(below);
-  });
-
   it("keeps fixed wall cells at zero displacement", () => {
     const state = createSolverState(stableConfig);
     setFixedBoundaryCells(state, stableConfig, [{ column: 12, row: 12 }]);
-    injectBipolarPulse(state, stableConfig, 12, 12, 1);
-    stepSolver(state, stableConfig);
+    const sourceTerm = new Float32Array(stableConfig.columns * stableConfig.rows);
+    sourceTerm[12 * stableConfig.columns + 12] = 1;
+    stepSolver(state, stableConfig, sourceTerm);
 
     expect(state.current[12 * stableConfig.columns + 12]).toBe(0);
   });

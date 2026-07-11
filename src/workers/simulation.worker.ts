@@ -2,13 +2,13 @@
 
 import {
   createSolverState,
-  injectBipolarPulse,
   resetSolverState,
   setFixedBoundaryCells,
   stepSolver,
   type SolverConfig,
   type SolverState,
 } from "../physics/solver";
+import { addGaussianSourceTerm, rickerWavelet } from "../physics/sources";
 import { workerProtocolVersion, type WorkerCommand, type WorkerEvent } from "./protocol";
 import type { ContinuousSourceConfig } from "../simulation/types";
 
@@ -22,6 +22,16 @@ let simulationStepCount = 0;
 let playbackSpeed: 0.25 | 0.5 | 1 | 2 = 1;
 let performanceWindowStartedAt = performance.now();
 let performanceWindowStepCount = 0;
+let sourceTerm: Float32Array | undefined;
+let activePulses: Array<{
+  column: number;
+  row: number;
+  amplitude: number;
+  startedAtSeconds: number;
+}> = [];
+
+const pulseDurationSeconds = 36;
+const pulseCentralFrequencyHz = 1 / 18;
 
 self.onmessage = (message: MessageEvent<WorkerCommand>) => {
   try {
@@ -50,9 +60,12 @@ function handleCommand(command: WorkerCommand): void {
       stopLoop();
       config = command.config;
       state = createSolverState(config);
+      sourceTerm = new Float32Array(config.columns * config.rows);
+      activePulses = [];
       continuousSourceEnabled = false;
       continuousSources = [];
       observer = undefined;
+      activePulses = [];
       simulationStepCount = 0;
       playbackSpeed = 1;
       resetPerformanceWindow();
@@ -105,8 +118,12 @@ function handleCommand(command: WorkerCommand): void {
       emitFrame();
       return;
     case "INJECT_PULSE":
-      injectBipolarPulse(requireState(), requireConfig(), command.column, command.row, command.amplitude);
-      emitFrame();
+      activePulses.push({
+        column: command.column,
+        row: command.row,
+        amplitude: command.amplitude,
+        startedAtSeconds: requireState().simulationTimeSeconds,
+      });
       return;
     case "DISPOSE":
       stopLoop();
@@ -134,16 +151,22 @@ function stopLoop(): void {
 function stepAndEmit(): void {
   const currentState = requireState();
   const currentConfig = requireConfig();
+  const currentSourceTerm = requireSourceTerm();
+  currentSourceTerm.fill(0);
 
   if (continuousSourceEnabled) {
     for (const source of continuousSources) {
+      if (!source.enabled) {
+        continue;
+      }
+
       // In normalized units c = 1 cell/s, so angular frequency is 2π/λ.
       const sourceAngularFrequency = (2 * Math.PI) / source.wavelengthCells;
       const sourceAmplitude =
         Math.sin(currentState.simulationTimeSeconds * sourceAngularFrequency + source.phaseRadians) *
         source.amplitude;
-      injectBipolarPulse(
-        currentState,
+      addGaussianSourceTerm(
+        currentSourceTerm,
         currentConfig,
         source.column,
         source.row,
@@ -152,7 +175,22 @@ function stepAndEmit(): void {
     }
   }
 
-  stepSolver(currentState, currentConfig);
+  for (const pulse of activePulses) {
+    const elapsedSeconds = currentState.simulationTimeSeconds - pulse.startedAtSeconds;
+    const pulseStrength = rickerWavelet(
+      elapsedSeconds,
+      pulseDurationSeconds,
+      pulseCentralFrequencyHz,
+      pulse.amplitude,
+    );
+    addGaussianSourceTerm(currentSourceTerm, currentConfig, pulse.column, pulse.row, pulseStrength);
+  }
+
+  activePulses = activePulses.filter(
+    (pulse) => currentState.simulationTimeSeconds - pulse.startedAtSeconds <= pulseDurationSeconds,
+  );
+
+  stepSolver(currentState, currentConfig, currentSourceTerm);
   simulationStepCount += 1;
   performanceWindowStepCount += 1;
   emitFrame();
@@ -237,6 +275,14 @@ function requireConfig(): SolverConfig {
   }
 
   return config;
+}
+
+function requireSourceTerm(): Float32Array {
+  if (sourceTerm === undefined) {
+    throw new Error("Initialize the simulation before sending source commands.");
+  }
+
+  return sourceTerm;
 }
 
 function emit(event: WorkerEvent): void {

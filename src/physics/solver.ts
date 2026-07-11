@@ -109,34 +109,11 @@ export function resetSolverState(state: SolverState): void {
   state.simulationTimeSeconds = 0;
 }
 
-export function injectBipolarPulse(
+export function stepSolver(
   state: SolverState,
   config: SolverConfig,
-  column: number,
-  row: number,
-  amplitude: number,
+  sourceTerm?: Float32Array,
 ): void {
-  const radiusCells = 10;
-
-  for (let offsetRow = -radiusCells; offsetRow <= radiusCells; offsetRow += 1) {
-    for (let offsetColumn = -radiusCells; offsetColumn <= radiusCells; offsetColumn += 1) {
-      const targetColumn = column + offsetColumn;
-      const targetRow = row + offsetRow;
-
-      if (targetColumn <= 0 || targetColumn >= config.columns - 1 || targetRow <= 0 || targetRow >= config.rows - 1) {
-        continue;
-      }
-
-      const distanceSquared = offsetColumn ** 2 + offsetRow ** 2;
-      // A zero-mean, Mexican-hat-like packet makes a crest and trough visible
-      // from a single tap. It is an initial condition, not the final source.
-      const kernelWeight = (1 - distanceSquared / 24) * Math.exp(-distanceSquared / 24);
-      state.current[toIndex(config, targetColumn, targetRow)] += amplitude * kernelWeight;
-    }
-  }
-}
-
-export function stepSolver(state: SolverState, config: SolverConfig): void {
   const courantNumber = calculateCourantNumber(config);
   const courantSquared = courantNumber ** 2;
   state.next.fill(0);
@@ -164,7 +141,8 @@ export function stepSolver(state: SolverState, config: SolverConfig): void {
       state.next[index] =
         (2 - dampingStep) * state.current[index] -
         (1 - dampingStep) * state.previous[index] +
-        courantSquared * laplacian;
+        courantSquared * laplacian +
+        config.timeStepSeconds ** 2 * (sourceTerm?.[index] ?? 0);
     }
   }
 

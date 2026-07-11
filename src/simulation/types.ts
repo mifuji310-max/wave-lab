@@ -5,4 +5,5 @@ export interface ContinuousSourceConfig {
   amplitude: number;
   wavelengthCells: number;
   phaseRadians: number;
+  enabled: boolean;
 }
