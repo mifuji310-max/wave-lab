@@ -464,6 +464,33 @@ h1 {
   height: 22px;
 }
 
+.source-timing-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.source-timing-readout p {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgb(15 23 42 / 45%);
+}
+
+.source-timing-readout span,
+.source-timing-readout small {
+  color: #a5f3fc;
+  font-size: 0.7rem;
+}
+
+.source-timing-readout small {
+  grid-column: 1 / -1;
+  line-height: 1.45;
+}
+
 .danger-control {
   width: 100%;
   margin-top: 12px;
@@ -662,7 +689,8 @@ h1 {
   }
 
   .source-settings-grid,
-  .diagnostics-grid {
+  .diagnostics-grid,
+  .source-timing-readout {
     grid-template-columns: 1fr;
   }
 }

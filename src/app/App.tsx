@@ -453,6 +453,7 @@ export function App() {
           columns={gridSize.columns}
           rows={gridSize.rows}
           visibleInsetCells={solverConfig.absorptionLayerCells}
+          waveSpeedCellsPerSecond={solverConfig.waveSpeedCellsPerSecond}
           onChange={updateContinuousSource}
           onDelete={deleteContinuousSource}
           onClose={() => setSelectedSourceId(undefined)}
