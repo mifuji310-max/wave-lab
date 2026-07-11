@@ -1,4 +1,5 @@
 import type { ContinuousSourceConfig } from "../simulation/types";
+import { SafeRangeInput } from "./SafeRangeInput";
 
 interface SourceSettingsPanelProps {
   source: ContinuousSourceConfig;
@@ -36,56 +37,51 @@ export function SourceSettingsPanel({
       <div className="source-settings-grid">
         <label>
           <span>横位置: {source.column}</span>
-          <input
-            type="range"
+          <SafeRangeInput
             min={minimumPosition}
             max={Math.max(minimumPosition, columns - minimumPosition - 1)}
             value={source.column}
-            onChange={(event) => onChange({ ...source, column: Number(event.target.value) })}
+            onValueChange={(column) => onChange({ ...source, column })}
           />
         </label>
         <label>
           <span>縦位置: {source.row}</span>
-          <input
-            type="range"
+          <SafeRangeInput
             min={minimumPosition}
             max={Math.max(minimumPosition, rows - minimumPosition - 1)}
             value={source.row}
-            onChange={(event) => onChange({ ...source, row: Number(event.target.value) })}
+            onValueChange={(row) => onChange({ ...source, row })}
           />
         </label>
         <label>
           <span>波の強さ: {source.amplitude.toFixed(1)}</span>
-          <input
-            type="range"
-            min="0.2"
-            max="2"
-            step="0.1"
+          <SafeRangeInput
+            min={0.2}
+            max={2}
+            step={0.1}
             value={source.amplitude}
-            onChange={(event) => onChange({ ...source, amplitude: Number(event.target.value) })}
+            onValueChange={(amplitude) => onChange({ ...source, amplitude })}
           />
         </label>
         <label>
           <span>波長: {source.wavelengthCells} セル</span>
-          <input
-            type="range"
-            min="8"
-            max="48"
-            step="2"
+          <SafeRangeInput
+            min={8}
+            max={48}
+            step={2}
             value={source.wavelengthCells}
-            onChange={(event) => onChange({ ...source, wavelengthCells: Number(event.target.value) })}
+            onValueChange={(wavelengthCells) => onChange({ ...source, wavelengthCells })}
           />
         </label>
         <label>
           <span>位相: {phaseDegrees}°</span>
-          <input
-            type="range"
-            min="0"
-            max="360"
-            step="15"
+          <SafeRangeInput
+            min={0}
+            max={360}
+            step={15}
             value={phaseDegrees}
-            onChange={(event) =>
-              onChange({ ...source, phaseRadians: (Number(event.target.value) * Math.PI) / 180 })
+            onValueChange={(phase) =>
+              onChange({ ...source, phaseRadians: (phase * Math.PI) / 180 })
             }
           />
         </label>
