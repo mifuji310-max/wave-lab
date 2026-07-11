@@ -13,9 +13,17 @@ import {
   type SimulationFrame,
 } from "../simulation/SimulationController";
 import type { ContinuousSourceConfig } from "../simulation/types";
+import { resolveSourceTap } from "./sourceInteraction";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
-type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
+type InteractionMode =
+  | "pulse"
+  | "observer"
+  | "source"
+  | "sourceSelect"
+  | "wall"
+  | "slit"
+  | "erase";
 type ToolCategory = "experiment" | "placement" | "playback" | "display";
 
 const statusLabels: Record<SimulationStatus, string> = {
@@ -53,6 +61,8 @@ export function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [viewportDiagnostic, setViewportDiagnostic] = useState(readViewportDiagnostic);
   const [renderFramesPerSecond, setRenderFramesPerSecond] = useState<number>();
+  const [fieldHintVisible, setFieldHintVisible] = useState(true);
+  const [fieldHintRevision, setFieldHintRevision] = useState(0);
 
   useEffect(() => {
     const controller = new SimulationController(solverConfig, {
@@ -103,6 +113,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    setFieldHintVisible(true);
+    const timerId = window.setTimeout(() => setFieldHintVisible(false), 4000);
+    return () => window.clearTimeout(timerId);
+  }, [fieldHintRevision, interactionMode]);
+
+  useEffect(() => {
     const updateViewportDiagnostic = () => setViewportDiagnostic(readViewportDiagnostic());
     window.addEventListener("resize", updateViewportDiagnostic);
     window.addEventListener("orientationchange", updateViewportDiagnostic);
@@ -137,6 +153,7 @@ export function App() {
     setObservationPanelOpen(false);
     setPerformanceMeasurement(undefined);
     setRenderFramesPerSecond(undefined);
+    setInteractionMode("pulse");
     setSimulationStatus("ready");
   };
 
@@ -176,8 +193,8 @@ export function App() {
       return;
     }
 
-    if (interactionMode === "source") {
-      selectOrCreateContinuousSource(column, row);
+    if (interactionMode === "source" || interactionMode === "sourceSelect") {
+      selectOrCreateContinuousSource(column, row, interactionMode === "source");
       return;
     }
 
@@ -206,14 +223,26 @@ export function App() {
     updateBoundaries(cells, erase);
   };
 
-  const selectOrCreateContinuousSource = (column: number, row: number) => {
-    const existingSource = continuousSources.find(
-      (source) => Math.hypot(source.column - column, source.row - row) <= 8,
+  const selectOrCreateContinuousSource = (
+    column: number,
+    row: number,
+    allowCreation: boolean,
+  ) => {
+    const resolution = resolveSourceTap(
+      continuousSources,
+      column,
+      row,
+      allowCreation,
     );
 
-    if (existingSource !== undefined) {
-      setSelectedSourceId(existingSource.id);
+    if (resolution.type === "select") {
+      setSelectedSourceId(resolution.source.id);
       setObservationPanelOpen(false);
+      return;
+    }
+
+    if (resolution.type === "ignore") {
+      setFieldHintRevision((revision) => revision + 1);
       return;
     }
 
@@ -299,7 +328,7 @@ export function App() {
     controllerReference.current?.setContinuousSource(true);
     controllerReference.current?.start();
     setSimulationStatus("running");
-    setInteractionMode("source");
+    setInteractionMode("sourceSelect");
   };
 
   const cycleSlitWidth = () => {
@@ -349,7 +378,13 @@ export function App() {
   const selectedSource = continuousSources.find((source) => source.id === selectedSourceId);
 
   return (
-    <main className={`app-shell ${selectedSource === undefined ? "" : "source-settings-open"}`}>
+    <main
+      className={[
+        "app-shell",
+        selectedSource === undefined ? "" : "source-settings-open",
+        observer === undefined ? "" : "has-observer",
+      ].filter(Boolean).join(" ")}
+    >
       <header className="app-header">
         <div>
           <p className="eyebrow">実験して理解する</p>
@@ -370,7 +405,10 @@ export function App() {
 
       <section className="experiment" aria-labelledby="experiment-title">
         <div className="field-container">
-          <h2 id="experiment-title" className="field-title">
+          <h2
+            id="experiment-title"
+            className={`field-title ${fieldHintVisible ? "" : "hidden"}`}
+          >
             {fieldTitleForMode(interactionMode)}
           </h2>
           <WaveCanvas
@@ -400,12 +438,14 @@ export function App() {
         </div>
       </section>
 
-      <ObservationPanel
-        open={observationPanelOpen}
-        observer={observer}
-        samples={observationSamples}
-        onToggle={() => setObservationPanelOpen((open) => !open)}
-      />
+      {observer === undefined ? null : (
+        <ObservationPanel
+          open={observationPanelOpen}
+          observer={observer}
+          samples={observationSamples}
+          onToggle={() => setObservationPanelOpen((open) => !open)}
+        />
+      )}
 
       {selectedSource === undefined || gridSize === undefined ? null : (
         <SourceSettingsPanel
@@ -434,9 +474,18 @@ export function App() {
                 二波源干渉
               </button>
               <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
-                連続波: {continuousSourceEnabled ? "ON" : "OFF"} ({continuousSources.length})
+                {continuousSources.length === 0
+                  ? "連続波源を置く"
+                  : continuousSourceEnabled
+                    ? `連続波を止める（波源${continuousSources.length}）`
+                    : `連続波を出す（波源${continuousSources.length}）`}
               </button>
-              <button type="button" onClick={handleReset} disabled={controlsDisabled}>
+              <button
+                type="button"
+                className="danger-outline-control"
+                onClick={handleReset}
+                disabled={controlsDisabled}
+              >
                 全リセット
               </button>
             </>
@@ -482,7 +531,12 @@ export function App() {
               >
                 壁を消す
               </button>
-              <button type="button" onClick={handleBoundaryReset} disabled={boundaryCells.length === 0}>
+              <button
+                type="button"
+                className="danger-outline-control"
+                onClick={handleBoundaryReset}
+                disabled={boundaryCells.length === 0}
+              >
                 壁を全消去
               </button>
             </>
@@ -499,7 +553,12 @@ export function App() {
               <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
                 速度: {playbackSpeed}×
               </button>
-              <button type="button" onClick={handleReset} disabled={controlsDisabled}>
+              <button
+                type="button"
+                className="danger-outline-control"
+                onClick={handleReset}
+                disabled={controlsDisabled}
+              >
                 全リセット
               </button>
             </>
@@ -558,6 +617,8 @@ function fieldTitleForMode(mode: InteractionMode): string {
       return "タップして観測点を置く";
     case "source":
       return "タップして波源を追加・選択";
+    case "sourceSelect":
+      return "波源をタップして設定。追加は「配置」→「波源」";
     case "wall":
       return "ドラッグして壁を描く";
     case "slit":

@@ -50,6 +50,13 @@ Use explicit modes:
 
 The active mode must remain clearly visible.
 
+After applying a two-source preset, the field is selection-only: tapping an
+existing source opens its settings, while tapping empty space does not create a
+third source. Source creation remains available through **配置 → 波源**.
+
+Mode hints appear when a mode changes and fade after four seconds. Observation
+controls are not shown until an observation point exists.
+
 ## 4. Portrait layout
 
 ```text
