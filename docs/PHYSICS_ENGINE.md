@@ -76,6 +76,11 @@ Multiple coherent continuous sources may be placed in the prototype. Each
 source has an explicit grid position; tapping an existing source selects it
 and opens its settings.
 
+The adjustable prototype range is 8–48 cells per wavelength. The 8-cell lower
+limit is supported for short-wave exploration, but it has more numerical
+dispersion than the 24-cell default and must not be presented as a precision
+measurement regime.
+
 Continuous-source angular frequency is calculated as
 `ω = 2πc / λ`, using the configured numerical wave speed rather than assuming
 that `c` will always remain one.
@@ -112,6 +117,12 @@ condition lets the remaining displacement leave instead of forcing the edge to
 zero. This is an educational and performance-oriented approximation, not a
 perfectly non-reflecting boundary. The implementation must measure and document
 the remaining oblique-incidence and corner reflection before lessons rely on it.
+
+The absorbing cells are outside the displayed experiment viewport. The visible
+domain ends where sponge damping is still zero; waves therefore leave the
+screen before numerical absorption begins. This preserves the intended visual
+model of propagation into an effectively unbounded exterior without pretending
+that a finite numerical grid can conserve outgoing energy forever.
 
 The prototype uses weak uniform interior damping (`0.005` in normalized inverse
 time units) so waves remain visible across the field. Strong damping is limited

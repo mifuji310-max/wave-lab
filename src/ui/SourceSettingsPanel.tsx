@@ -4,6 +4,7 @@ interface SourceSettingsPanelProps {
   source: ContinuousSourceConfig;
   columns: number;
   rows: number;
+  visibleInsetCells: number;
   onChange: (source: ContinuousSourceConfig) => void;
   onDelete: (sourceId: string) => void;
   onClose: () => void;
@@ -13,11 +14,14 @@ export function SourceSettingsPanel({
   source,
   columns,
   rows,
+  visibleInsetCells,
   onChange,
   onDelete,
   onClose,
 }: SourceSettingsPanelProps) {
   const phaseDegrees = Math.round((source.phaseRadians * 180) / Math.PI);
+  const positionMarginCells = 6;
+  const minimumPosition = visibleInsetCells + positionMarginCells;
 
   return (
     <aside className="source-settings-panel" aria-label="連続波源の設定">
@@ -34,8 +38,8 @@ export function SourceSettingsPanel({
           <span>横位置: {source.column}</span>
           <input
             type="range"
-            min="8"
-            max={Math.max(8, columns - 9)}
+            min={minimumPosition}
+            max={Math.max(minimumPosition, columns - minimumPosition - 1)}
             value={source.column}
             onChange={(event) => onChange({ ...source, column: Number(event.target.value) })}
           />
@@ -44,8 +48,8 @@ export function SourceSettingsPanel({
           <span>縦位置: {source.row}</span>
           <input
             type="range"
-            min="8"
-            max={Math.max(8, rows - 9)}
+            min={minimumPosition}
+            max={Math.max(minimumPosition, rows - minimumPosition - 1)}
             value={source.row}
             onChange={(event) => onChange({ ...source, row: Number(event.target.value) })}
           />
@@ -65,7 +69,7 @@ export function SourceSettingsPanel({
           <span>波長: {source.wavelengthCells} セル</span>
           <input
             type="range"
-            min="12"
+            min="8"
             max="48"
             step="2"
             value={source.wavelengthCells}
