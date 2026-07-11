@@ -16,6 +16,19 @@ A new user should produce a visible wave within three seconds.
 
 Gestures must have visible alternatives for discoverability and accessibility.
 
+### Wave height color scale
+
+- Positive displacement is red.
+- Negative displacement is blue.
+- Zero displacement is a light neutral gray, not white, so equilibrium remains
+  distinct from empty page chrome.
+- Colors between the endpoints are interpolated continuously because wave
+  displacement is a continuous quantity. Discrete color bands must not imply
+  physical steps that are absent from the model.
+
+Continuous-source and observation markers are vector overlays. They remain
+sharp when the low-resolution simulation grid is enlarged on a phone or PC.
+
 ## 3. Modes
 
 Avoid one overloaded toolbar.

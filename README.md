@@ -69,6 +69,7 @@ The current prototype includes:
 6. Editable fixed walls and an adjustable single-slit experiment tool
 7. A coherent two-source interference preset
 8. Grouped mobile controls and an on-screen Android/rotation performance diagnostic
+9. Crisp vector source markers, non-overlapping source settings, and improved outer absorption
 
 The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 
