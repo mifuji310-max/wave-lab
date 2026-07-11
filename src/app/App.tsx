@@ -258,7 +258,9 @@ export function App() {
     const nextSources = [...continuousSources, newSource];
 
     setContinuousSources(nextSources);
-    setSelectedSourceId(newSource.id);
+    // Creating a source should keep the field visible. Settings remain available
+    // when the learner deliberately taps an existing source marker.
+    setSelectedSourceId(undefined);
     setObservationPanelOpen(false);
     controllerReference.current?.setContinuousSources(nextSources);
 
