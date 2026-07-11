@@ -20,9 +20,10 @@ Gestures must have visible alternatives for discoverability and accessibility.
 
 - Positive displacement is red.
 - Negative displacement is blue.
-- Zero displacement is a light neutral gray, not white, so equilibrium remains
-  distinct from empty page chrome.
-- Colors between the endpoints are interpolated continuously because wave
+- Zero displacement is green, negative intermediate values pass through cyan,
+  and positive intermediate values pass through yellow. This contour-plot
+  vocabulary makes more of the continuous height range visible.
+- Colors between the five reference stops are interpolated continuously because wave
   displacement is a continuous quantity. Discrete color bands must not imply
   physical steps that are absent from the model.
 

@@ -174,10 +174,7 @@ export function WaveCanvas({
                 className={`source-marker ${source.enabled ? "" : "disabled"}`}
                 transform={`translate(${source.column + 0.5} ${source.row + 0.5})`}
               >
-                <circle className="source-marker-halo" r="5.25" />
-                <circle className="source-marker-body" r="3.75" />
-                <circle className="source-marker-core" r="1.35" />
-                <path className="source-marker-cross" d="M -6 0 H -4.5 M 4.5 0 H 6 M 0 -6 V -4.5 M 0 4.5 V 6" />
+                <circle className="source-marker-dot" r="4.25" />
               </g>
             ))}
             {observer === undefined ? null : (

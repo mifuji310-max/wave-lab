@@ -63,7 +63,7 @@ The current prototype includes:
 
 1. Worker-based two-dimensional scalar FDTD simulation
 2. Finite-duration tap pulses and individually configurable continuous sources
-3. Color and monochrome Canvas 2D rendering
+3. Continuous contour-style color and monochrome Canvas 2D rendering
 4. Playback, step, reset, speed, and performance controls
 5. One observation point with a fixed-scale history graph
 6. Editable fixed walls and an adjustable single-slit experiment tool

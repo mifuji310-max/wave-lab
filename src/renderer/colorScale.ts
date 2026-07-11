@@ -4,22 +4,24 @@ export interface RgbColor {
   blue: number;
 }
 
-const neutralColor: RgbColor = { red: 226, green: 232, blue: 240 };
-const highColor: RgbColor = { red: 239, green: 68, blue: 68 };
-const lowColor: RgbColor = { red: 37, green: 99, blue: 235 };
-const lookupLevelCount = 512;
+const displayAmplitudeRange = 8;
+const contourStops: Array<{ position: number; color: RgbColor }> = [
+  { position: -1, color: { red: 29, green: 78, blue: 216 } },
+  { position: -0.5, color: { red: 6, green: 182, blue: 212 } },
+  { position: 0, color: { red: 101, green: 217, blue: 75 } },
+  { position: 0.5, color: { red: 250, green: 204, blue: 21 } },
+  { position: 1, color: { red: 220, green: 38, blue: 38 } },
+];
+const lookupLevelCount = 513;
 const colorLookupTable = createLookupTable("color");
 const monochromeLookupTable = createLookupTable("monochrome");
 
 export function colorForDisplacement(displacement: number): RgbColor {
-  const normalized = Math.max(-1, Math.min(1, displacement * 0.7));
-  return normalized >= 0
-    ? interpolateColor(neutralColor, highColor, normalized)
-    : interpolateColor(neutralColor, lowColor, Math.abs(normalized));
+  return colorForNormalizedDisplacement(normalizeDisplacement(displacement));
 }
 
 export function monochromeForDisplacement(displacement: number): RgbColor {
-  const normalized = Math.max(-1, Math.min(1, displacement * 0.7));
+  const normalized = normalizeDisplacement(displacement);
   const lightness = Math.round(180 + normalized * 68);
 
   return { red: lightness, green: lightness, blue: lightness };
@@ -33,7 +35,7 @@ export function writeDisplacementColors(
   const lookupTable = displayMode === "color" ? colorLookupTable : monochromeLookupTable;
 
   for (let index = 0; index < field.length; index += 1) {
-    const normalized = Math.max(-1, Math.min(1, field[index] * 0.7));
+    const normalized = normalizeDisplacement(field[index]);
     const lookupIndex = Math.min(
       lookupLevelCount - 1,
       Math.max(0, Math.round(((normalized + 1) / 2) * (lookupLevelCount - 1))),
@@ -45,6 +47,25 @@ export function writeDisplacementColors(
     target[pixelOffset + 2] = lookupTable[lookupOffset + 2];
     target[pixelOffset + 3] = 255;
   }
+}
+
+function normalizeDisplacement(displacement: number): number {
+  return Math.max(-1, Math.min(1, displacement / displayAmplitudeRange));
+}
+
+function colorForNormalizedDisplacement(normalized: number): RgbColor {
+  for (let index = 1; index < contourStops.length; index += 1) {
+    const upperStop = contourStops[index];
+
+    if (normalized <= upperStop.position) {
+      const lowerStop = contourStops[index - 1];
+      const amount =
+        (normalized - lowerStop.position) / (upperStop.position - lowerStop.position);
+      return interpolateColor(lowerStop.color, upperStop.color, amount);
+    }
+  }
+
+  return contourStops[contourStops.length - 1].color;
 }
 
 function interpolateColor(from: RgbColor, to: RgbColor, amount: number): RgbColor {
@@ -60,11 +81,10 @@ function createLookupTable(displayMode: "color" | "monochrome"): Uint8ClampedArr
 
   for (let index = 0; index < lookupLevelCount; index += 1) {
     const normalized = (index / (lookupLevelCount - 1)) * 2 - 1;
-    const displacement = normalized / 0.7;
     const color =
       displayMode === "color"
-        ? colorForDisplacement(displacement)
-        : monochromeForDisplacement(displacement);
+        ? colorForNormalizedDisplacement(normalized)
+        : monochromeForDisplacement(normalized * displayAmplitudeRange);
     const offset = index * 4;
     lookupTable[offset] = color.red;
     lookupTable[offset + 1] = color.green;

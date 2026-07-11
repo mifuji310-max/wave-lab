@@ -172,44 +172,20 @@ h1 {
   pointer-events: none;
 }
 
-.source-marker,
+.source-marker-dot,
 .observer-marker,
-.source-marker-cross,
 .observer-marker-cross {
   vector-effect: non-scaling-stroke;
-}
-
-.source-marker {
-  filter: drop-shadow(0 1px 1px rgb(8 51 68 / 55%));
 }
 
 .source-marker.disabled {
   opacity: 0.45;
 }
 
-.source-marker-halo {
-  fill: rgb(236 254 255 / 88%);
-  stroke: #164e63;
+.source-marker-dot {
+  fill: #7c3aed;
+  stroke: #ffffff;
   stroke-width: 1.5;
-}
-
-.source-marker-body {
-  fill: #06b6d4;
-  stroke: #083344;
-  stroke-width: 1.5;
-}
-
-.source-marker-core {
-  fill: #ecfeff;
-  stroke: #0e7490;
-  stroke-width: 1;
-}
-
-.source-marker-cross {
-  fill: none;
-  stroke: #083344;
-  stroke-width: 1.5;
-  stroke-linecap: round;
 }
 
 .observer-marker {
@@ -247,7 +223,7 @@ h1 {
   min-height: 9px;
   border: 1px solid #475569;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2563eb, #e2e8f0 50%, #ef4444);
+  background: linear-gradient(90deg, #1d4ed8, #06b6d4 25%, #65d94b 50%, #facc15 75%, #dc2626);
 }
 
 .legend-scale {
@@ -541,6 +517,8 @@ h1 {
   fill: none;
   stroke: #ea580c;
   stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .measurement-note {
