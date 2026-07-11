@@ -72,6 +72,8 @@ time-envelope source will replace it before lesson validation.
 
 The prototype continuous source targets a wavelength of approximately 24 grid
 cells. This is a normalized numerical wavelength, not a real-world length.
+Multiple coherent continuous sources may be placed in the prototype. Each
+source has an explicit grid position; tapping an existing source removes it.
 
 ### Continuous source
 
@@ -104,6 +106,10 @@ wave is reduced before reaching the fixed outermost cells. This is an
 educational and performance-oriented approximation, not a perfectly
 non-reflecting boundary. The implementation must measure and document the
 remaining reflection before lessons rely on it.
+
+The prototype uses weak uniform interior damping (`0.005` in normalized inverse
+time units) so waves remain visible across the field. Strong damping is limited
+to the outer sponge, where outgoing waves are removed from view.
 
 The exact physical interpretation of a “wall” must be documented. Fixed-value and zero-normal-gradient boundaries represent different idealizations and must not be mixed without explanation.
 

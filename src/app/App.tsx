@@ -10,9 +10,10 @@ import {
   type PerformanceMeasurement,
   type SimulationFrame,
 } from "../simulation/SimulationController";
+import type { ContinuousSourceConfig } from "../simulation/types";
 
 type SimulationStatus = "loading" | "ready" | "running" | "paused" | "error";
-type InteractionMode = "pulse" | "observer" | "wall" | "slit" | "erase";
+type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
 
 const statusLabels: Record<SimulationStatus, string> = {
   loading: "計算を準備中",
@@ -27,6 +28,7 @@ const prototypeConfig = createPrototypeConfig();
 export function App() {
   const controllerReference = useRef<SimulationController | null>(null);
   const boundaryCellsReference = useRef<Map<string, BoundaryCell>>(new Map());
+  const sourceIdReference = useRef(1);
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>("loading");
   const [frame, setFrame] = useState<SimulationFrame>();
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -39,6 +41,7 @@ export function App() {
   const [playbackSpeed, setPlaybackSpeed] = useState<0.25 | 0.5 | 1 | 2>(1);
   const [performanceMeasurement, setPerformanceMeasurement] = useState<PerformanceMeasurement>();
   const [boundaryCells, setBoundaryCells] = useState<BoundaryCell[]>([]);
+  const [continuousSources, setContinuousSources] = useState<ContinuousSourceConfig[]>([]);
 
   useEffect(() => {
     const controller = new SimulationController(prototypeConfig, {
@@ -74,7 +77,13 @@ export function App() {
 
   const handleReset = () => {
     controllerReference.current?.reset();
+    boundaryCellsReference.current = new Map();
+    setBoundaryCells([]);
+    setContinuousSources([]);
+    setContinuousSourceEnabled(false);
+    setObserver(undefined);
     setObservationSamples([]);
+    setObservationPanelOpen(false);
     setSimulationStatus("ready");
   };
 
@@ -84,6 +93,11 @@ export function App() {
   };
 
   const handleContinuousSource = () => {
+    if (continuousSources.length === 0) {
+      setInteractionMode("source");
+      return;
+    }
+
     const nextEnabled = !continuousSourceEnabled;
     controllerReference.current?.setContinuousSource(nextEnabled);
     setContinuousSourceEnabled(nextEnabled);
@@ -103,8 +117,8 @@ export function App() {
       return;
     }
 
-    if (interactionMode === "wall" || interactionMode === "erase") {
-      updateBoundaries([{ column, row }], interactionMode === "erase");
+    if (interactionMode === "source") {
+      updateContinuousSources(column, row);
       return;
     }
 
@@ -128,12 +142,47 @@ export function App() {
     }
   };
 
-  const handleFieldDrag = (from: BoundaryCell, to: BoundaryCell) => {
-    if (interactionMode !== "wall" && interactionMode !== "erase") {
+  const handleBoundaryStroke = (cells: BoundaryCell[], erase: boolean) => {
+    updateBoundaries(cells, erase);
+  };
+
+  const updateContinuousSources = (column: number, row: number) => {
+    const existingSource = continuousSources.find(
+      (source) => Math.hypot(source.column - column, source.row - row) <= 8,
+    );
+    const nextSources =
+      existingSource === undefined
+        ? [
+            ...continuousSources,
+            {
+              id: `source-${sourceIdReference.current++}`,
+              column,
+              row,
+              amplitude: 0.12,
+              wavelengthCells: 24,
+              phaseRadians: 0,
+            },
+          ]
+        : continuousSources.filter((source) => source.id !== existingSource.id);
+
+    setContinuousSources(nextSources);
+    controllerReference.current?.setContinuousSources(nextSources);
+
+    if (nextSources.length === 0) {
+      setContinuousSourceEnabled(false);
+      controllerReference.current?.setContinuousSource(false);
       return;
     }
 
-    updateBoundaries(rasterizeLine(from, to), interactionMode === "erase");
+    if (!continuousSourceEnabled) {
+      setContinuousSourceEnabled(true);
+      controllerReference.current?.setContinuousSource(true);
+    }
+
+    if (simulationStatus !== "running") {
+      controllerReference.current?.start();
+      setSimulationStatus("running");
+    }
   };
 
   const updateBoundaries = (centers: BoundaryCell[], erase: boolean) => {
@@ -203,10 +252,11 @@ export function App() {
             frame={frame}
             displayMode={displayMode}
             observer={observer}
+            continuousSources={continuousSources}
             boundaryCells={boundaryCells}
             interactionMode={interactionMode}
             onFieldTap={handleFieldTap}
-            onFieldDrag={handleFieldDrag}
+            onBoundaryStroke={handleBoundaryStroke}
           />
           <div className="color-legend" aria-label="波の高さの色の説明">
             <span>低い</span>
@@ -240,6 +290,13 @@ export function App() {
         </button>
         <button
           type="button"
+          className={interactionMode === "source" ? "mode-control active-control" : "mode-control"}
+          onClick={() => setInteractionMode("source")}
+        >
+          連続波源 ({continuousSources.length})
+        </button>
+        <button
+          type="button"
           className={interactionMode === "wall" ? "mode-control active-control" : "mode-control"}
           onClick={() => setInteractionMode("wall")}
         >
@@ -269,7 +326,7 @@ export function App() {
           一歩進む
         </button>
         <button type="button" onClick={handleContinuousSource} disabled={controlsDisabled}>
-          連続波: {continuousSourceEnabled ? "ON" : "OFF"}
+          連続波: {continuousSourceEnabled ? "ON" : "OFF"} ({continuousSources.length})
         </button>
         <button type="button" onClick={handleSpeed} disabled={controlsDisabled}>
           速度: {playbackSpeed}×
@@ -283,43 +340,14 @@ export function App() {
   );
 }
 
-function rasterizeLine(from: BoundaryCell, to: BoundaryCell): BoundaryCell[] {
-  const cells: BoundaryCell[] = [];
-  const columnDistance = Math.abs(to.column - from.column);
-  const rowDistance = Math.abs(to.row - from.row);
-  const columnDirection = from.column < to.column ? 1 : -1;
-  const rowDirection = from.row < to.row ? 1 : -1;
-  let error = columnDistance - rowDistance;
-  let column = from.column;
-  let row = from.row;
-
-  while (true) {
-    cells.push({ column, row });
-
-    if (column === to.column && row === to.row) {
-      return cells;
-    }
-
-    const doubledError = error * 2;
-
-    if (doubledError > -rowDistance) {
-      error -= rowDistance;
-      column += columnDirection;
-    }
-
-    if (doubledError < columnDistance) {
-      error += columnDistance;
-      row += rowDirection;
-    }
-  }
-}
-
 function fieldTitleForMode(mode: InteractionMode): string {
   switch (mode) {
     case "pulse":
       return "タップして波を起こす";
     case "observer":
       return "タップして観測点を置く";
+    case "source":
+      return "タップして連続波源を追加・削除";
     case "wall":
       return "ドラッグして壁を描く";
     case "slit":
@@ -344,7 +372,7 @@ function createPrototypeConfig(): SolverConfig {
     waveSpeedCellsPerSecond: 1,
     cellSize: 1,
     timeStepSeconds: 0.5,
-    dampingPerSecond: 0.02,
+    dampingPerSecond: 0.005,
     absorptionLayerCells: Math.max(16, Math.round(minimumDimension * 0.1)),
     absorptionMaxDampingPerSecond: 1.2,
   };

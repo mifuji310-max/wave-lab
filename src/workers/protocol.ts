@@ -1,5 +1,6 @@
 import type { SolverConfig } from "../physics/solver";
 import type { BoundaryCell } from "../physics/solver";
+import type { ContinuousSourceConfig } from "../simulation/types";
 
 export const workerProtocolVersion = 1 as const;
 
@@ -10,6 +11,7 @@ export type WorkerCommand =
   | { version: typeof workerProtocolVersion; type: "STEP" }
   | { version: typeof workerProtocolVersion; type: "RESET" }
   | { version: typeof workerProtocolVersion; type: "SET_CONTINUOUS_SOURCE"; enabled: boolean }
+  | { version: typeof workerProtocolVersion; type: "SET_CONTINUOUS_SOURCES"; sources: ContinuousSourceConfig[] }
   | { version: typeof workerProtocolVersion; type: "SET_SPEED"; multiplier: 0.25 | 0.5 | 1 | 2 }
   | { version: typeof workerProtocolVersion; type: "SET_OBSERVER"; column: number; row: number }
   | { version: typeof workerProtocolVersion; type: "SET_BOUNDARIES"; cells: BoundaryCell[] }
