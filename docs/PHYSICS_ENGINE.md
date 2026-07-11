@@ -65,10 +65,10 @@ The implementation must calculate and enforce a safety margin. UI parameters may
 
 A finite-duration source with a documented temporal envelope.
 
-The current tap prototype uses a bipolar initial-displacement packet so that
-both the raised and lowered parts of a wave are visible immediately. It is a
-temporary interaction aid, not the final finite-duration source model. A
-time-envelope source will replace it before lesson validation.
+The tap pulse uses a finite-duration Ricker wavelet with a Gaussian spatial
+kernel. It enters through the documented source term `S(x,y,t)` rather than by
+directly modifying the solver displacement arrays. The prototype pulse lasts
+36 normalized seconds with central frequency `1/18` in normalized units.
 
 The prototype continuous source targets a wavelength of approximately 24 grid
 cells. This is a normalized numerical wavelength, not a real-world length.
