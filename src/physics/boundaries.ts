@@ -5,10 +5,11 @@ export function createSingleSlitBoundaryCells(
   rows: number,
   column: number,
   openingCenterRow: number,
+  openingWidthCells = 24,
 ): BoundaryCell[] {
   const cells: BoundaryCell[] = [];
   const barrierThicknessCells = 2;
-  const openingHalfHeightCells = 12;
+  const openingHalfHeightCells = Math.max(1, Math.round(openingWidthCells / 2));
   const openingStartRow = openingCenterRow - openingHalfHeightCells;
   const openingEndRow = openingCenterRow + openingHalfHeightCells;
 

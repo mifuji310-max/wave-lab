@@ -156,6 +156,10 @@ function stepAndEmit(): void {
 
   if (continuousSourceEnabled) {
     for (const source of continuousSources) {
+      if (!source.enabled) {
+        continue;
+      }
+
       // In normalized units c = 1 cell/s, so angular frequency is 2π/λ.
       const sourceAngularFrequency = (2 * Math.PI) / source.wavelengthCells;
       const sourceAmplitude =
