@@ -43,11 +43,23 @@ Touch/UI input
 Simulation controller
     ↓ command
 Physics Worker
-    ↓ snapshots / sampled data
-Renderer + observation store
+    ↓ latest transferable snapshot / sampled data
+Renderer-owned requestAnimationFrame loop + observation store
     ↓
 React UI
 ```
+
+Full field snapshots are retained in a mutable latest-frame reference rather
+than React state. The renderer reads only the newest available snapshot on its
+`requestAnimationFrame` loop, reuses its `ImageData`, and reports low-frequency
+diagnostics back to React. This prevents simulation frequency from forcing a
+React render and matches the ownership model expected by a future Three.js
+render loop.
+
+Playback timing uses a real-time step accumulator. Slow-motion speeds may
+accumulate fractional steps, faster speeds may execute multiple solver steps
+per tick, and only the final field for that tick is emitted. A per-tick cap
+drops excessive backlog so a delayed device cannot enter a catch-up spiral.
 
 ## 5. Worker protocol
 

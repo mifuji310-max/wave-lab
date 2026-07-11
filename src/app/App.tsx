@@ -30,9 +30,11 @@ export function App() {
   const controllerReference = useRef<SimulationController | null>(null);
   const boundaryCellsReference = useRef<Map<string, BoundaryCell>>(new Map());
   const sourceIdReference = useRef(1);
-  const renderMeasurementReference = useRef({ startedAt: performance.now(), frames: 0 });
+  const latestFrameReference = useRef<SimulationFrame | undefined>(undefined);
+  const gridSizeReference = useRef<{ columns: number; rows: number } | undefined>(undefined);
+  const pendingObservationSamplesReference = useRef<ObservationSample[]>([]);
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>("loading");
-  const [frame, setFrame] = useState<SimulationFrame>();
+  const [gridSize, setGridSize] = useState<{ columns: number; rows: number }>();
   const [errorMessage, setErrorMessage] = useState<string>();
   const [continuousSourceEnabled, setContinuousSourceEnabled] = useState(false);
   const [displayMode, setDisplayMode] = useState<"color" | "monochrome">("color");
@@ -55,20 +57,21 @@ export function App() {
     const controller = new SimulationController(createPrototypeConfig(), {
       onReady: () => setSimulationStatus("ready"),
       onFrame: (nextFrame) => {
-        setFrame(nextFrame);
-        const measurement = renderMeasurementReference.current;
-        measurement.frames += 1;
-        const now = performance.now();
+        latestFrameReference.current = nextFrame;
+        const currentGridSize = gridSizeReference.current;
 
-        if (now - measurement.startedAt >= 1000) {
-          setRenderFramesPerSecond(
-            Math.round((measurement.frames * 1000) / (now - measurement.startedAt)),
-          );
-          renderMeasurementReference.current = { startedAt: now, frames: 0 };
+        if (
+          currentGridSize === undefined ||
+          currentGridSize.columns !== nextFrame.columns ||
+          currentGridSize.rows !== nextFrame.rows
+        ) {
+          const nextGridSize = { columns: nextFrame.columns, rows: nextFrame.rows };
+          gridSizeReference.current = nextGridSize;
+          setGridSize(nextGridSize);
         }
       },
       onObservationSample: (sample) => {
-        setObservationSamples((samples) => [...samples.slice(-179), sample]);
+        pendingObservationSamplesReference.current.push(sample);
       },
       onPerformance: setPerformanceMeasurement,
       onError: (message) => {
@@ -82,6 +85,20 @@ export function App() {
       controller.dispose();
       controllerReference.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      if (pendingObservationSamplesReference.current.length === 0) {
+        return;
+      }
+
+      const pendingSamples = pendingObservationSamplesReference.current;
+      pendingObservationSamplesReference.current = [];
+      setObservationSamples((samples) => [...samples, ...pendingSamples].slice(-180));
+    }, 200);
+
+    return () => window.clearInterval(timerId);
   }, []);
 
   useEffect(() => {
@@ -114,8 +131,11 @@ export function App() {
     setSelectedSourceId(undefined);
     setContinuousSourceEnabled(false);
     setObserver(undefined);
+    pendingObservationSamplesReference.current = [];
     setObservationSamples([]);
     setObservationPanelOpen(false);
+    setPerformanceMeasurement(undefined);
+    setRenderFramesPerSecond(undefined);
     setSimulationStatus("ready");
   };
 
@@ -161,12 +181,13 @@ export function App() {
     }
 
     if (interactionMode === "slit") {
-      if (frame === undefined) {
+      if (gridSize === undefined) {
         return;
       }
 
       updateBoundaries(
-        createSingleSlitBoundaryCells(frame.columns, frame.rows, column, row, slitWidthCells),
+        createSingleSlitBoundaryCells(gridSize.columns, gridSize.rows, column, row, slitWidthCells),
+        false,
         false,
       );
       return;
@@ -243,16 +264,16 @@ export function App() {
   };
 
   const createTwoSourceExperiment = () => {
-    if (frame === undefined) {
+    if (gridSize === undefined) {
       return;
     }
 
-    const row = Math.round(frame.rows * 0.5);
+    const row = Math.round(gridSize.rows * 0.5);
     const wavelengthCells = 24;
     const nextSources: ContinuousSourceConfig[] = [
       {
         id: `source-${sourceIdReference.current++}`,
-        column: Math.round(frame.columns * 0.4),
+        column: Math.round(gridSize.columns * 0.4),
         row,
         amplitude: 0.8,
         wavelengthCells,
@@ -261,7 +282,7 @@ export function App() {
       },
       {
         id: `source-${sourceIdReference.current++}`,
-        column: Math.round(frame.columns * 0.6),
+        column: Math.round(gridSize.columns * 0.6),
         row,
         amplitude: 0.8,
         wavelengthCells,
@@ -286,12 +307,13 @@ export function App() {
     setSlitWidthCells(widths[(currentIndex + 1) % widths.length]);
   };
 
-  const updateBoundaries = (centers: BoundaryCell[], erase: boolean) => {
+  const updateBoundaries = (centers: BoundaryCell[], erase: boolean, expandStroke = true) => {
     const nextBoundaryCells = new Map(boundaryCellsReference.current);
+    const offsets = expandStroke ? [-1, 0, 1] : [0];
 
     for (const center of centers) {
-      for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
-        for (let columnOffset = -1; columnOffset <= 1; columnOffset += 1) {
+      for (const rowOffset of offsets) {
+        for (const columnOffset of offsets) {
           const cell = {
             column: center.column + columnOffset,
             row: center.row + rowOffset,
@@ -351,7 +373,8 @@ export function App() {
             {fieldTitleForMode(interactionMode)}
           </h2>
           <WaveCanvas
-            frame={frame}
+            frameReference={latestFrameReference}
+            gridSize={gridSize}
             displayMode={displayMode}
             observer={observer}
             continuousSources={continuousSources}
@@ -359,6 +382,7 @@ export function App() {
             interactionMode={interactionMode}
             onFieldTap={handleFieldTap}
             onBoundaryStroke={handleBoundaryStroke}
+            onRenderFramesPerSecond={setRenderFramesPerSecond}
           />
           <div
             className="color-legend"
@@ -381,11 +405,11 @@ export function App() {
         onToggle={() => setObservationPanelOpen((open) => !open)}
       />
 
-      {selectedSource === undefined || frame === undefined ? null : (
+      {selectedSource === undefined || gridSize === undefined ? null : (
         <SourceSettingsPanel
           source={selectedSource}
-          columns={frame.columns}
-          rows={frame.rows}
+          columns={gridSize.columns}
+          rows={gridSize.rows}
           onChange={updateContinuousSource}
           onDelete={deleteContinuousSource}
           onClose={() => setSelectedSourceId(undefined)}
@@ -513,7 +537,7 @@ export function App() {
       <DiagnosticsPanel
         open={diagnosticsOpen}
         viewport={viewportDiagnostic}
-        frame={frame}
+        gridSize={gridSize}
         performanceMeasurement={performanceMeasurement}
         renderFramesPerSecond={renderFramesPerSecond}
         onClose={() => setDiagnosticsOpen(false)}

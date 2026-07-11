@@ -1,4 +1,4 @@
-import type { PerformanceMeasurement, SimulationFrame } from "../simulation/SimulationController";
+import type { PerformanceMeasurement } from "../simulation/SimulationController";
 
 export interface ViewportDiagnostic {
   width: number;
@@ -10,7 +10,7 @@ export interface ViewportDiagnostic {
 interface DiagnosticsPanelProps {
   open: boolean;
   viewport: ViewportDiagnostic;
-  frame: SimulationFrame | undefined;
+  gridSize: { columns: number; rows: number } | undefined;
   performanceMeasurement: PerformanceMeasurement | undefined;
   renderFramesPerSecond: number | undefined;
   onClose: () => void;
@@ -19,7 +19,7 @@ interface DiagnosticsPanelProps {
 export function DiagnosticsPanel({
   open,
   viewport,
-  frame,
+  gridSize,
   performanceMeasurement,
   renderFramesPerSecond,
   onClose,
@@ -53,7 +53,7 @@ export function DiagnosticsPanel({
         </div>
         <div>
           <dt>計算格子</dt>
-          <dd>{frame === undefined ? "準備中" : `${frame.columns} × ${frame.rows}`}</dd>
+          <dd>{gridSize === undefined ? "準備中" : `${gridSize.columns} × ${gridSize.rows}`}</dd>
         </div>
         <div>
           <dt>計算速度</dt>

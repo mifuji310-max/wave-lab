@@ -1,13 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { BoundaryCell } from "../physics/solver";
 import type { SimulationFrame } from "../simulation/SimulationController";
 import type { ContinuousSourceConfig } from "../simulation/types";
-import { colorForDisplacement, monochromeForDisplacement } from "./colorScale";
+import { writeDisplacementColors } from "./colorScale";
 
 type InteractionMode = "pulse" | "observer" | "source" | "wall" | "slit" | "erase";
 
 interface WaveCanvasProps {
-  frame: SimulationFrame | undefined;
+  frameReference: RefObject<SimulationFrame | undefined>;
+  gridSize: { columns: number; rows: number } | undefined;
   displayMode: "color" | "monochrome";
   observer: { column: number; row: number } | undefined;
   continuousSources: ContinuousSourceConfig[];
@@ -15,10 +16,12 @@ interface WaveCanvasProps {
   interactionMode: InteractionMode;
   onFieldTap: (column: number, row: number) => void;
   onBoundaryStroke: (cells: BoundaryCell[], erase: boolean) => void;
+  onRenderFramesPerSecond: (framesPerSecond: number) => void;
 }
 
 export function WaveCanvas({
-  frame,
+  frameReference,
+  gridSize,
   displayMode,
   observer,
   continuousSources,
@@ -26,6 +29,7 @@ export function WaveCanvas({
   interactionMode,
   onFieldTap,
   onBoundaryStroke,
+  onRenderFramesPerSecond,
 }: WaveCanvasProps) {
   const canvasReference = useRef<HTMLCanvasElement>(null);
   const previousPointerCell = useRef<BoundaryCell | null>(null);
@@ -34,7 +38,7 @@ export function WaveCanvas({
   useEffect(() => {
     const canvas = canvasReference.current;
 
-    if (canvas === null || frame === undefined) {
+    if (canvas === null) {
       return;
     }
 
@@ -44,33 +48,55 @@ export function WaveCanvas({
       return;
     }
 
-    canvas.width = frame.columns;
-    canvas.height = frame.rows;
-    const image = context.createImageData(frame.columns, frame.rows);
+    let animationFrameId = 0;
+    let lastRenderedFrame: SimulationFrame | undefined;
+    let image: ImageData | undefined;
+    let measurementStartedAt = performance.now();
+    let renderedFrameCount = 0;
 
-    for (let index = 0; index < frame.field.length; index += 1) {
-      const color =
-        displayMode === "color"
-          ? colorForDisplacement(frame.field[index])
-          : monochromeForDisplacement(frame.field[index]);
-      const pixelIndex = index * 4;
-      image.data[pixelIndex] = color.red;
-      image.data[pixelIndex + 1] = color.green;
-      image.data[pixelIndex + 2] = color.blue;
-      image.data[pixelIndex + 3] = 255;
-    }
+    const drawLatestFrame = () => {
+      const frame = frameReference.current;
 
-    context.putImageData(image, 0, 0);
+      if (frame !== undefined && frame !== lastRenderedFrame) {
+        if (canvas.width !== frame.columns || canvas.height !== frame.rows) {
+          canvas.width = frame.columns;
+          canvas.height = frame.rows;
+          image = context.createImageData(frame.columns, frame.rows);
+        } else if (image === undefined) {
+          image = context.createImageData(frame.columns, frame.rows);
+        }
 
-    context.fillStyle = "#1e293b";
-    for (const cell of boundaryCells) {
-      context.fillRect(cell.column, cell.row, 1, 1);
-    }
+        writeDisplacementColors(image.data, frame.field, displayMode);
+        context.putImageData(image, 0, 0);
+        context.fillStyle = "#1e293b";
 
-  }, [boundaryCells, displayMode, frame]);
+        for (const cell of boundaryCells) {
+          context.fillRect(cell.column, cell.row, 1, 1);
+        }
+
+        lastRenderedFrame = frame;
+        renderedFrameCount += 1;
+        const now = performance.now();
+
+        if (now - measurementStartedAt >= 1000) {
+          onRenderFramesPerSecond(
+            Math.round((renderedFrameCount * 1000) / (now - measurementStartedAt)),
+          );
+          measurementStartedAt = now;
+          renderedFrameCount = 0;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(drawLatestFrame);
+    };
+
+    animationFrameId = requestAnimationFrame(drawLatestFrame);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [boundaryCells, displayMode, frameReference, onRenderFramesPerSecond]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const cell = cellFromPointer(event, frame);
+    const cell = cellFromPointer(event, gridSize);
 
     if (cell === undefined) {
       return;
@@ -95,7 +121,7 @@ export function WaveCanvas({
     }
 
     event.preventDefault();
-    const cell = cellFromPointer(event, frame);
+    const cell = cellFromPointer(event, gridSize);
 
     if (cell === undefined || sameCell(cell, previousPointerCell.current)) {
       return;
@@ -125,7 +151,7 @@ export function WaveCanvas({
     <div className="wave-canvas-viewport">
       <div
         className="wave-field-layer"
-        style={{ aspectRatio: frame === undefined ? "4 / 5" : `${frame.columns} / ${frame.rows}` }}
+        style={{ aspectRatio: gridSize === undefined ? "4 / 5" : `${gridSize.columns} / ${gridSize.rows}` }}
       >
         <canvas
           ref={canvasReference}
@@ -136,10 +162,10 @@ export function WaveCanvas({
           onPointerCancel={handlePointerUp}
           aria-label={fieldLabel(interactionMode)}
         />
-        {frame === undefined ? null : (
+        {gridSize === undefined ? null : (
           <svg
             className="field-marker-overlay"
-            viewBox={`0 0 ${frame.columns} ${frame.rows}`}
+            viewBox={`0 0 ${gridSize.columns} ${gridSize.rows}`}
             aria-hidden="true"
           >
             {continuousSources.map((source) => (
@@ -183,9 +209,9 @@ function drawStrokePreview(canvas: HTMLCanvasElement, cells: BoundaryCell[], era
 
 function cellFromPointer(
   event: React.PointerEvent<HTMLCanvasElement>,
-  frame: SimulationFrame | undefined,
+  gridSize: { columns: number; rows: number } | undefined,
 ): BoundaryCell | undefined {
-  if (frame === undefined) {
+  if (gridSize === undefined) {
     return undefined;
   }
 
@@ -194,11 +220,11 @@ function cellFromPointer(
   return {
     column: Math.max(
       1,
-      Math.min(frame.columns - 2, Math.floor(((event.clientX - bounds.left) / bounds.width) * frame.columns)),
+      Math.min(gridSize.columns - 2, Math.floor(((event.clientX - bounds.left) / bounds.width) * gridSize.columns)),
     ),
     row: Math.max(
       1,
-      Math.min(frame.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * frame.rows)),
+      Math.min(gridSize.rows - 2, Math.floor(((event.clientY - bounds.top) / bounds.height) * gridSize.rows)),
     ),
   };
 }

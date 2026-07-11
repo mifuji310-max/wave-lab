@@ -73,7 +73,12 @@ directly modifying the solver displacement arrays. The prototype pulse lasts
 The prototype continuous source targets a wavelength of approximately 24 grid
 cells. This is a normalized numerical wavelength, not a real-world length.
 Multiple coherent continuous sources may be placed in the prototype. Each
-source has an explicit grid position; tapping an existing source removes it.
+source has an explicit grid position; tapping an existing source selects it
+and opens its settings.
+
+Continuous-source angular frequency is calculated as
+`ω = 2πc / λ`, using the configured numerical wave speed rather than assuming
+that `c` will always remain one.
 
 ### Continuous source
 
@@ -157,6 +162,16 @@ Each case records:
 - Tolerance
 - Result
 - Device and build
+
+Automated numerical checks in `waveValidation.test.ts` currently cover:
+
+- Axis propagation speed within ±8% of the configured numerical speed
+- Sign inversion and minimum reflected amplitude at an idealized fixed wall
+- A minimum antinode-to-node amplitude ratio for two coherent sources
+
+These tests validate solver behavior independently of the browser. Circular
+symmetry, diffraction trends, and device-specific visual validation remain
+open validation work.
 
 ## 9. Educational honesty
 

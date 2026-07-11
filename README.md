@@ -70,6 +70,7 @@ The current prototype includes:
 7. A coherent two-source interference preset
 8. Grouped mobile controls and an on-screen Android/rotation performance diagnostic
 9. Crisp vector source markers, non-overlapping source settings, and improved outer absorption
+10. A requestAnimationFrame renderer path and measured numerical validation tests
 
 The browser-side Android and rotation diagnostic is implemented. Physical-device results still need to be recorded using the [Android validation checklist](docs/validation/ANDROID_PERFORMANCE_AND_ROTATION.md).
 
